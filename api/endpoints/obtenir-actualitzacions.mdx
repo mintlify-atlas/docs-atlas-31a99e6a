@@ -1,0 +1,273 @@
+---
+title: 'ObtenirActualitzacions'
+description: 'Retrieve master data updates for fines and incidents'
+api: 'GET /ObtenirActualitzacions'
+---
+
+## Overview
+
+The `ObtenirActualitzacions` endpoint retrieves updates to master data files required for recording fines and incidents. This endpoint supports pagination through a continuation token mechanism to handle large datasets efficiently.
+
+## Authentication
+
+This endpoint requires device authentication using the device identifier (IMEI) and municipality code.
+
+<ParamField query="pIMEI" type="string" required>
+  Device identifier: maximum 15 alphanumeric positions
+</ParamField>
+
+<ParamField query="pClient" type="string" required>
+  Municipality code according to ORGT codification
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="pData" type="string" required>
+  Date of the last master data update, in format `yyyyMMddHHmm`.
+  
+  When incorporating a new municipality, download master data from `190001010000` (January 1, 1900) to ensure all data is retrieved. Subsequently, periodic downloads can use the date of the last download to obtain only updates.
+  
+  **Example:** `202603010830` (March 1, 2026 at 08:30)
+</ParamField>
+
+<ParamField query="pSeguent" type="string" required>
+  Continuation token identifying the next page of master data to download.
+  
+  - On the first call, leave this parameter **empty**
+  - To obtain all available updates, make successive calls passing the string returned in the previous call
+  - When the endpoint returns an empty string, there are no more updates to download
+</ParamField>
+
+## Pagination Logic
+
+To retrieve all master data updates:
+
+1. **First request:** Set `pSeguent` to empty string `""`
+2. **Check response:** Examine the `Seguent` field in the response
+3. **Continue fetching:** If `Seguent` is not empty, make another request with `pSeguent` set to the returned value
+4. **Completion:** When `Seguent` returns empty, all updates have been retrieved
+
+```javascript Example Pagination
+let seguent = "";
+let allUpdates = [];
+
+do {
+  const response = await fetch(
+    `/ObtenirActualitzacions?pIMEI=${imei}&pClient=${client}&pData=${lastUpdate}&pSeguent=${seguent}`
+  );
+  const data = await response.text();
+  // Parse XML and extract updates
+  allUpdates.push(data);
+  
+  // Extract continuation token
+  seguent = extractSeguent(data);
+} while (seguent !== "");
+```
+
+## Response Schema
+
+<ResponseField name="Actualitzacions" type="object">
+  Root element containing all master data updates
+
+  <ResponseField name="Retorn" type="object">
+    Operation result information
+    
+    <ResponseField name="CodiRetorn" type="integer">
+      Return code: `0` indicates success, negative values indicate errors
+    </ResponseField>
+    
+    <ResponseField name="DescRetorn" type="string">
+      Description of the return code (empty on success)
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="Seguent" type="string">
+    Continuation token for the next page. Empty string indicates no more data.
+    
+    **Example:** `ART00342261`
+  </ResponseField>
+
+  <ResponseField name="Articles" type="array">
+    Array of article updates
+    
+    <ResponseField name="ActualitzacioArticle" type="object">
+      <ResponseField name="Cdclie" type="string">Municipality code</ResponseField>
+      <ResponseField name="TipusActualitzacio" type="string">Update type: `Alta`, `Baixa`, or `Modificacio`</ResponseField>
+      <ResponseField name="artreg" type="integer">Article number</ResponseField>
+      <ResponseField name="cnorma" type="string">Regulation code (e.g., `RGC`)</ResponseField>
+      <ResponseField name="dsarti" type="string">Article description</ResponseField>
+      <ResponseField name="sqregl" type="integer">Regulation sequence number</ResponseField>
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="Municipis" type="array">
+    Array of municipality updates
+    
+    <ResponseField name="ActualitzacioMunicipi" type="object">
+      <ResponseField name="Cdclie" type="string">Municipality code (ORGT)</ResponseField>
+      <ResponseField name="TipusActualitzacio" type="string">Update type</ResponseField>
+      <ResponseField name="cine10" type="string">INE code (10 digits)</ResponseField>
+      <ResponseField name="dsnomc" type="string">Municipality short name</ResponseField>
+      <ResponseField name="dsnom1" type="string">Municipality name part 1</ResponseField>
+      <ResponseField name="dsnom2" type="string">Municipality name part 2</ResponseField>
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="Conductes" type="array">
+    Array of conduct/infraction updates
+    
+    <ResponseField name="ActualitzacioConducta" type="object">
+      <ResponseField name="sqcond" type="integer">Conduct sequence number</ResponseField>
+      <ResponseField name="cdcond" type="integer">Conduct code</ResponseField>
+      <ResponseField name="dscoc1" type="string">Catalan description line 1</ResponseField>
+      <ResponseField name="dscoc2" type="string">Catalan description line 2</ResponseField>
+      <ResponseField name="dscoc3" type="string">Catalan description line 3</ResponseField>
+      <ResponseField name="dscoe1" type="string">Spanish description line 1</ResponseField>
+      <ResponseField name="dscoe2" type="string">Spanish description line 2</ResponseField>
+      <ResponseField name="dscoe3" type="string">Spanish description line 3</ResponseField>
+      <ResponseField name="import" type="integer">Fine amount</ResponseField>
+      <ResponseField name="impbon" type="integer">Reduced amount</ResponseField>
+      <ResponseField name="npunts" type="integer">License points deducted</ResponseField>
+      <ResponseField name="grainf" type="string">Infraction severity</ResponseField>
+      <ResponseField name="regl" type="integer">Regulation reference</ResponseField>
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="Carrerer" type="array">Array of street directory updates</ResponseField>
+  <ResponseField name="Models" type="array">Array of vehicle model updates</ResponseField>
+  <ResponseField name="Colors" type="array">Array of color updates</ResponseField>
+  <ResponseField name="Motius" type="array">Array of reason/motive updates</ResponseField>
+  <ResponseField name="Organs" type="array">Array of administrative organ updates</ResponseField>
+  <ResponseField name="VehiclesPrecintats" type="array">Array of sealed vehicle updates</ResponseField>
+  <ResponseField name="Documents" type="array">Array of document updates</ResponseField>
+  <ResponseField name="TipusIncidencia" type="array">Array of incident type updates</ResponseField>
+  <ResponseField name="AmbitsIncidencia" type="array">Array of incident scope updates</ResponseField>
+  <ResponseField name="ObjectesIncidencia" type="array">Array of incident object updates</ResponseField>
+  <ResponseField name="AnomaliesIncidencia" type="array">Array of incident anomaly updates</ResponseField>
+</ResponseField>
+
+## XML Response Example
+
+```xml
+<Actualitzacions xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<AmbitsIncidencia/>
+	<AnomaliesIncidencia/>
+	<Articles>
+		<ActualitzacioArticle>
+			<Cdclie>006</Cdclie>
+			<TipusActualitzacio>Alta</TipusActualitzacio>
+			<artreg>20</artreg>
+			<cnorma>RGC</cnorma>
+			<dsarti>NIVELLS D'ALCOHOL EN SANG I AIRE ESPT</dsarti>
+			<sqregl>1655</sqregl>
+		</ActualitzacioArticle>
+		<ActualitzacioArticle>
+			<Cdclie>006</Cdclie>
+			<TipusActualitzacio>Alta</TipusActualitzacio>
+			<artreg>46</artreg>
+			<cnorma>RGC</cnorma>
+			<dsarti>MODERACIÓ DE LA VELOCITAT. SUPÒS</dsarti>
+			<sqregl>1657</sqregl>
+		</ActualitzacioArticle>
+	</Articles>
+	<Carrerer/>
+	<Colors/>
+	<Conductes/>
+	<Documents/>
+	<Models/>
+	<Motius/>
+	<Municipis/>
+	<ObjectesIncidencia/>
+	<Organs/>
+	<Retorn>
+		<CodiRetorn>0</CodiRetorn>
+		<DescRetorn/>
+	</Retorn>
+	<Seguent>ART00342261</Seguent>
+	<TipusIncidencia/>
+	<VehiclesPrecintats/>
+</Actualitzacions>
+```
+
+## Update Types
+
+All master data entities include a `TipusActualitzacio` field indicating the update type:
+
+- **Alta** (0): New record
+- **Baixa** (1): Deleted record
+- **Modificacio** (2): Modified record
+
+## Usage Patterns
+
+### Initial Sync
+
+When setting up a new device or municipality, perform a full sync from 1900:
+
+```javascript
+const fullSync = async (imei, client) => {
+  const updates = [];
+  let seguent = "";
+  const initialDate = "190001010000"; // January 1, 1900
+  
+  do {
+    const response = await getActualitzacions(imei, client, initialDate, seguent);
+    updates.push(response);
+    seguent = response.Seguent;
+  } while (seguent);
+  
+  return updates;
+};
+```
+
+### Periodic Updates
+
+For regular synchronization, use the last successful update timestamp:
+
+```javascript
+const periodicSync = async (imei, client, lastUpdateDate) => {
+  const updates = [];
+  let seguent = "";
+  
+  do {
+    const response = await getActualitzacions(imei, client, lastUpdateDate, seguent);
+    updates.push(response);
+    seguent = response.Seguent;
+  } while (seguent);
+  
+  // Save new timestamp for next sync
+  const now = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
+  saveLastUpdateDate(now);
+  
+  return updates;
+};
+```
+
+### Processing Updates
+
+Handle different update types appropriately:
+
+```javascript
+const processUpdates = (actualitzacions) => {
+  // Process each master data type
+  actualitzacions.Articles?.forEach(article => {
+    switch (article.TipusActualitzacio) {
+      case 'Alta':
+        insertArticle(article);
+        break;
+      case 'Baixa':
+        deleteArticle(article);
+        break;
+      case 'Modificacio':
+        updateArticle(article);
+        break;
+    }
+  });
+  
+  // Repeat for other master data types...
+};
+```
+
+## Related Endpoints
+
+- [ObtenirMunicipis](/api/endpoints/obtenir-municipis) - Get complete list of municipalities
+- [FerLogin](/api/endpoints/fer-login) - Authenticate device to access master data

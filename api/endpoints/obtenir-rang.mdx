@@ -1,0 +1,107 @@
+---
+title: 'ObtenirRang'
+description: 'Request new record number ranges for a device to work offline'
+api: 'GET /ObtenirRang'
+---
+
+## Overview
+
+The ObtenirRang endpoint requests new ranges of ticket/fine record numbers for a device, enabling offline work. This is the recommended endpoint instead of the deprecated DemanarRang.
+
+## Authentication
+
+This endpoint requires a valid device identifier (IMEI) that has been previously registered in the system.
+
+## Query Parameters
+
+<ParamField query="pImei" type="string" required>
+  Device identifier: maximum 15 alphanumeric positions
+</ParamField>
+
+<ParamField query="pEstat1" type="integer" required>
+  Set to 1 to request the primary range, 0 if not needed
+</ParamField>
+
+<ParamField query="pEstat2" type="integer" required>
+  Set to 1 to request the secondary range, 0 if not needed
+</ParamField>
+
+## Response Schema
+
+The endpoint returns a `Rang` object containing:
+
+<ResponseField name="Retorn" type="object">
+  Return object with operation result
+  
+  <ResponseField name="CodiRetorn" type="integer">
+    Return code indicating the operation result
+  </ResponseField>
+  
+  <ResponseField name="DescRetorn" type="string">
+    Return description with additional details
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="Minrang1" type="integer" format="int64">
+  Minimum value of the primary range
+</ResponseField>
+
+<ResponseField name="MaxRang1" type="integer" format="int64">
+  Maximum value of the primary range
+</ResponseField>
+
+<ResponseField name="MinRang2" type="integer" format="int64">
+  Minimum value of the secondary range
+</ResponseField>
+
+<ResponseField name="MaxRang2" type="integer" format="int64">
+  Maximum value of the secondary range
+</ResponseField>
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success - ranges assigned successfully |
+| -1 | Application error - invalid request or device not found |
+| -9000 | Uncontrolled exception |
+| Other negative | Database error |
+
+## Usage Examples
+
+### cURL - Request Both Ranges
+
+```bash
+curl -X GET "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=353947020131525&pEstat1=1&pEstat2=1" \
+  -H "Accept: application/xml"
+```
+
+### cURL - Request Only Primary Range
+
+```bash
+curl -X GET "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=353947020131525&pEstat1=1&pEstat2=0" \
+  -H "Accept: application/xml"
+```
+
+### Example Response
+
+```xml
+<Rang xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <MaxRang1>1590630</MaxRang1>
+  <MaxRang2>1590640</MaxRang2>
+  <MinRang2>1590631</MinRang2>
+  <Minrang1>1590621</Minrang1>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+</Rang>
+```
+
+## Notes
+
+- This endpoint is recommended over the deprecated `DemanarRang` endpoint
+- The returned ranges must be used when creating new fines/tickets with the `/AltaMulta` endpoint
+- Record numbers must be within the assigned ranges to be valid
+- Request new ranges before the current ranges are exhausted to ensure uninterrupted offline operation
+- Both primary (Rang1) and secondary (Rang2) ranges can be requested independently

@@ -1,0 +1,274 @@
+---
+title: Introduction
+description: REST API webservice for municipalities to register traffic violations
+mode: custom
+---
+
+<div className="relative overflow-hidden bg-gradient-to-br from-[#004C99] via-[#0066CC] to-[#004C99] dark:from-[#001a33] dark:via-[#004C99] dark:to-[#001a33] py-20">
+  <div className="max-w-7xl mx-auto px-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Alta Multes API Documentation
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 max-w-2xl mb-8">
+          REST API webservice for municipalities to register and manage traffic violations. Designed for PDAs, mobile apps, and centralized web applications with offline support.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="/adhesion-process"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#0066CC] font-semibold hover:bg-gray-100 transition-colors"
+          >
+            Get Started
+          </a>
+          <a
+            href="/api/overview"
+            className="inline-flex items-center px-6 py-3 rounded-lg border border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
+          >
+            API Reference
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+          <div className="text-white/80 text-sm font-mono">
+            <div className="mb-2">
+              <span className="text-green-400">POST</span> /AltaMulta
+            </div>
+            <div className="mb-2">
+              <span className="text-blue-400">GET</span> /Consulta
+            </div>
+            <div className="mb-2">
+              <span className="text-blue-400">GET</span> /ObtenirRang
+            </div>
+            <div className="mb-2">
+              <span className="text-blue-400">GET</span> /ObtenirActualitzacions
+            </div>
+            <div className="text-white/60">+ 6 more endpoints</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Quick Start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get started with the Alta Multes API in minutes
+  </p>
+
+  <Steps>
+    <Step title="Complete the adhesion process">
+      Download and complete the [adhesion form](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Formulari%20d'adhesi%C3%B3.pdf), have it signed by the mayor, and submit it via EACAT to the ORGT.
+    </Step>
+
+    <Step title="Provide your certificate">
+      Communicate the public key of your SSL certificate to the ORGT. This certificate will be used for mutual TLS authentication on both production and pre-production environments.
+
+      <Note>
+        The same certificate is used for accessing the webservice, WSDL specification, and REST API documentation.
+      </Note>
+    </Step>
+
+    <Step title="Register your devices">
+      Provide the ORGT with the IMEI identifiers for all devices that will access the API. Each device must be registered and associated with a municipality.
+
+      <Accordion title="Device identification options">
+        - **PDAs**: Use the actual IMEI number
+        - **Mobile apps**: The ORGT will assign a virtual IMEI code
+        - **Web applications**: Use the format `company-municipalitycode` (e.g., "MULTA-001")
+      </Accordion>
+    </Step>
+
+    <Step title="Test on pre-production">
+      Make your first API call to the pre-production environment to verify connectivity:
+
+      ```bash
+      curl --cert your-cert.pem --key your-key.pem \
+        "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirMunicipis"
+      ```
+
+      <Accordion title="Example response">
+        ```xml
+        <ArrayOfActualitzacioMunicipi xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+          <ActualitzacioMunicipi>
+            <Cdclie>093</Cdclie>
+            <TipusActualitzacio>Alta</TipusActualitzacio>
+            <cine10>0809450006</cine10>
+            <dsnomc>LA GRANADA</dsnomc>
+          </ActualitzacioMunicipi>
+        </ArrayOfActualitzacioMunicipi>
+        ```
+      </Accordion>
+    </Step>
+
+    <Step title="Register your first violation">
+      Once testing is complete, register a traffic violation on production:
+
+      ```bash
+      curl --cert your-cert.pem --key your-key.pem \
+        -X POST \
+        -H "Content-Type: application/xml" \
+        -d @multa.xml \
+        "https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/AltaMulta"
+      ```
+
+      <Warning>
+        Use agent codes starting with "USU" (e.g., "USU1") for connectivity testing. These violations are not processed into the ORGT system.
+      </Warning>
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Key Features
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to manage traffic violations
+  </p>
+
+  <CardGroup cols={2}>
+    <Card title="Offline Operation" icon="wifi-slash" href="/guides/working-offline">
+      Request expedition number ranges and work without connectivity until the range is exhausted
+    </Card>
+    <Card title="Certificate Authentication" icon="shield-check" href="/guides/authentication">
+      Secure mutual TLS authentication with client and server certificates
+    </Card>
+    <Card title="Master Data Sync" icon="arrows-rotate" href="/concepts/master-data">
+      Synchronize municipalities, violations, vehicle models, and supporting documents
+    </Card>
+    <Card title="Multi-Device Support" icon="mobile" href="/concepts/device-identification">
+      PDAs, mobile apps, and centralized web applications with unique device identification
+    </Card>
+    <Card title="Violation Management" icon="file-invoice" href="/api/endpoints/alta-multa">
+      Register, query, and cancel traffic violations with full audit trail
+    </Card>
+    <Card title="XML Format" icon="code" href="/api/overview">
+      All requests and responses use XML format with alphabetically ordered fields
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    API Endpoints
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Explore the complete API reference
+  </p>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <a
+      href="/api/endpoints/alta-multa"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#0066CC] dark:hover:border-[#0066CC] overflow-hidden no-underline transition-colors bg-white dark:bg-[#1a1d27]"
+    >
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">POST</span>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+            AltaMulta
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Register a new traffic violation with all required data including vehicle, location, and infraction details
+        </p>
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+          View endpoint
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/api/endpoints/obtenir-rang"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#0066CC] dark:hover:border-[#0066CC] overflow-hidden no-underline transition-colors bg-white dark:bg-[#1a1d27]"
+    >
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">GET</span>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+            ObtenirRang
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Request expedition number ranges for offline operation, allowing devices to work without connectivity
+        </p>
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+          View endpoint
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/api/endpoints/obtenir-actualitzacions"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#0066CC] dark:hover:border-[#0066CC] overflow-hidden no-underline transition-colors bg-white dark:bg-[#1a1d27]"
+    >
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">GET</span>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+            ObtenirActualitzacions
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Fetch updates to master data including municipalities, violations, vehicle models, and documents
+        </p>
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+          View endpoint
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/api/endpoints/consulta"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#0066CC] dark:hover:border-[#0066CC] overflow-hidden no-underline transition-colors bg-white dark:bg-[#1a1d27]"
+    >
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">GET</span>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+            Consulta
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Query a traffic violation by municipality code and expedition number
+        </p>
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 group-hover:text-[#0066CC] dark:group-hover:text-[#4D94FF]">
+          View endpoint
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl border border-gray-200 dark:border-[#27272a] bg-gradient-to-br from-[#0066CC] to-[#004C99] p-8 sm:p-12 text-center">
+    <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-4">
+      Ready to get started?
+    </h2>
+    <p className="text-base sm:text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+      Complete the adhesion process and start integrating the Alta Multes API into your traffic violation management system.
+    </p>
+    <a
+      href="/adhesion-process"
+      className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#0066CC] font-semibold hover:bg-gray-100 transition-colors"
+    >
+      Start Adhesion Process
+    </a>
+  </div>
+</div>

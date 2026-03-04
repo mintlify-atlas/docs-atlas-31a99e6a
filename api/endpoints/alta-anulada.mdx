@@ -1,0 +1,134 @@
+---
+title: 'GET /AltaAnulada'
+description: 'Cancel a registered traffic violation'
+---
+
+## Overview
+
+The AltaAnulada endpoint allows you to cancel a previously registered traffic violation. The violation is identified by the municipality code and expedition number.
+
+<Warning>
+Cancellations are saved to an intermediate database and processed asynchronously. Even if the endpoint returns a success code (0), the cancellation may not be completed for various reasons outlined in the Error Codes section.
+</Warning>
+
+## Endpoint
+
+```
+GET /AltaAnulada
+```
+
+## Authentication
+
+This endpoint requires authentication with a valid device identifier (IMEI).
+
+## Content Type
+
+- **Consumes:** `application/json`, `application/xml`
+- **Produces:** `application/xml`
+
+## Query Parameters
+
+<ParamField query="pCdclie" type="string" required>
+  Municipality code according to ORGT codification (3-digit string). Example: '100' = Hospitalet de Llobregat. Use `ObtenirMunicipis()` to see all valid values.
+</ParamField>
+
+<ParamField query="pCdexpa" type="string" required>
+  Expedition number. Together with the municipality code, this uniquely identifies the violation to cancel.
+</ParamField>
+
+<ParamField query="pIMEI" type="string" required>
+  Device identifier (IMEI). Maximum 15 alphanumeric characters.
+</ParamField>
+
+## Response
+
+### Success Response (200)
+
+Returns a `tRetorn` object with the operation result.
+
+<ResponseField name="CodiRetorn" type="integer" required>
+  Return code indicating the result:
+  - `0`: Success - cancellation request recorded
+  - `1`: A violation with the same expedition number has already been cancelled (possibly in a different municipality)
+  - `-1`: Failed to save cancellation to database
+  - Negative value (not -9000): Database error
+  - `-9000`: Other error (non-database)
+</ResponseField>
+
+<ResponseField name="DescRetorn" type="string">
+  Error description (empty on success)
+</ResponseField>
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success - cancellation request recorded* |
+| 1 | Violation with same expedition number already cancelled |
+| -1 | Failed to save cancellation to database |
+| -9000 | Unhandled exception |
+| Other negative | Database error |
+
+<Info>
+*Even with a return code of 0, the cancellation may not complete due to asynchronous processing. See Cancellation Processing Notes below.
+</Info>
+
+## Cancellation Processing Notes
+
+Cancellations are saved to an intermediate database and processed asynchronously. Even if the API returns code 0, the cancellation may not be completed for the following reasons:
+
+- The violation already has a date/proposal, or there is no balance by date
+- The violation has been transferred
+- The violation is in a blocked executive file
+- An appeal or legal recourse has already been submitted
+- The violation has a sanction and the payment deadline has expired
+
+## Examples
+
+### Request Example
+
+```bash
+GET /AltaAnulada?pCdclie=088&pCdexpa=P090018145&pIMEI=353947020131525
+```
+
+### Success Response Example
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <CodiRetorn>0</CodiRetorn>
+  <DescRetorn/>
+</tRetorn>
+```
+
+### Error Response Example (Already Cancelled)
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <CodiRetorn>1</CodiRetorn>
+  <DescRetorn>Violation already cancelled</DescRetorn>
+</tRetorn>
+```
+
+## Important Notes
+
+<Note>
+- The pCdclie must be a valid 3-digit municipality code
+- The pCdexpa must match an existing violation
+- The pIMEI must be a valid registered device identifier
+- Return code 1 indicates the violation was already cancelled, even if it was in a different municipality
+- Successful API response (code 0) does not guarantee the cancellation will be processed - check violation status later to confirm
+</Note>
+
+## Verification
+
+After calling AltaAnulada, you can verify the cancellation status by calling the [GET /Consulta](/api/endpoints/consulta) endpoint and checking the `Anulada` field in the response.
+
+```xml
+<Anulada>true</Anulada>
+```
+
+## Related Endpoints
+
+- [POST /AltaMulta](/api/endpoints/alta-multa) - Create a new violation
+- [GET /Consulta](/api/endpoints/consulta) - Query violation status
+- GET /ObtenirMunicipis - Get list of valid municipality codes

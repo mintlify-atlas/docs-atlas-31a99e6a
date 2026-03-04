@@ -1,0 +1,175 @@
+---
+title: Technical Requirements
+description: Technical and administrative requirements for integrating with the Alta Multes API
+---
+
+## Prerequisites
+
+Before using the Alta Multes API webservice, you must complete the following requirements:
+
+### Administrative Requirements
+
+<Steps>
+  <Step title="Complete the adhesion process">
+    Submit the [adhesion form](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Formulari%20d'adhesi%C3%B3.pdf) signed by the Mayor via EACAT.
+    
+    See the [Adhesion Process](/adhesion-process) page for detailed instructions.
+  </Step>
+
+  <Step title="Provide your public certificate">
+    As part of the adhesion process, provide the public part of the certificate you will use to access the webservice.
+    
+    <Warning>
+      The certificate must be communicated to ORGT before testing, as the public key needs to be installed on ORGT servers.
+    </Warning>
+  </Step>
+
+  <Step title="Register your devices">
+    Communicate to ORGT all devices that will use the service so they can be assigned IMEIs and registered in the database.
+    
+    <Note>
+      You must notify ORGT each time you add a new device.
+    </Note>
+  </Step>
+</Steps>
+
+### Technical Requirements
+
+## Authentication and Security
+
+<Warning>
+  Access to the webservice is via HTTPS with certificate authentication for both client and server.
+</Warning>
+
+Key security aspects:
+
+- **Protocol**: HTTPS only
+- **Client certificate**: Required for all API calls
+- **Server certificate**: Verified by ORGT
+- **Same certificate**: Used for both pre-production and production environments
+
+## Data Format Requirements
+
+### Request and Response Format
+
+<Note>
+  Both POST requests and responses are in XML format.
+</Note>
+
+### Text Data Formatting
+
+<Warning>
+  All text data must be in uppercase (MAYÚSCULES).
+</Warning>
+
+### XML Field Ordering
+
+<Warning>
+  For the AltaMulta endpoint, XML fields in the request body must be ordered alphabetically.
+</Warning>
+
+The ordering requirements:
+- First field must be: `cdagen`
+- Last field must be: `viapen`
+- All fields in between must be alphabetically sorted
+
+See the [example request](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Exemples/AltaMulta%20peticio.xml) for proper field ordering.
+
+## Testing Requirements
+
+### Pre-Production Testing
+
+<Steps>
+  <Step title="Test in pre-production first">
+    Before using the production service, you must test in the pre-production environment.
+    
+    **Pre-production URL:**
+    ```
+    https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/
+    ```
+  </Step>
+
+  <Step title="Communicate certificate and IMEIs">
+    Before testing in pre-production, communicate to ORGT:
+    - The certificate you will use
+    - The IMEIs that will be used for testing
+  </Step>
+
+  <Step title="Perform connectivity tests in production">
+    After pre-production tests, you can test connectivity with the production environment.
+    
+    **Production URL:**
+    ```
+    https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/
+    ```
+    
+    <Note>
+      For production connectivity tests, use an agent code starting with **"USU"** (e.g., "USU1"). All fines with these agent codes are considered test data and will not enter the ORGT fine system.
+    </Note>
+  </Step>
+</Steps>
+
+## API Endpoint Structure
+
+<Note>
+  You must append the endpoint name to the base URL.
+</Note>
+
+Example for the `ObtenirRang` endpoint in pre-production:
+```
+https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=123&pEstat1=1&pEstat2=1
+```
+
+## Integration Resources
+
+### API Specification
+
+The REST API specification is available via Swagger:
+- [Swagger JSON file](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/swagger%20WcfMultesPDA.json)
+
+<Note>
+  You can automatically generate your API client from the Swagger specification file.
+</Note>
+
+### WSDL Documentation
+
+Although the WSDL is for the SOAP version, field names and explanations are the same for REST:
+- Production WSDL: [https://pda.orgt.diba.cat/WcfMultesPDA/svcMultesPDA.svc?singleWsdl](https://pda.orgt.diba.cat/WcfMultesPDA/svcMultesPDA.svc?singleWsdl)
+- Pre-production WSDL: Available at the same path on the pre-production server
+
+<Note>
+  You can cancel the certificate request to access the WSDL documentation.
+</Note>
+
+### Validation Schema
+
+The XML validation schema is available directly from the webservice:
+
+**Pre-production schema:**
+```
+https://pdaprv16.orgt.diba.cat/RestMultesPDA/schema/svcMultesPDA.xsd
+```
+
+**Production schema:**
+```
+https://pda.orgt.diba.cat/RestMultesPDA/schema/svcMultesPDA.xsd
+```
+
+## Development Checklist
+
+Before going live, ensure you have:
+
+- [ ] Completed the adhesion process
+- [ ] Provided your public certificate to ORGT
+- [ ] Received IMEI assignments for all devices
+- [ ] Implemented HTTPS with certificate authentication
+- [ ] Configured XML request/response handling
+- [ ] Implemented uppercase text formatting
+- [ ] Implemented alphabetical field ordering for AltaMulta requests
+- [ ] Successfully tested all endpoints in pre-production
+- [ ] Performed connectivity tests in production with "USU" agent codes
+- [ ] Validated XML responses against the schema
+
+## Getting Help
+
+For questions about requirements or the adhesion process, contact ORGT through the official channels mentioned in your adhesion documentation.

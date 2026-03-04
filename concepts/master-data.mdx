@@ -1,0 +1,675 @@
+---
+title: Master Data
+description: Understanding the master data system and synchronization process
+---
+
+## Overview
+
+The Alta Multes API provides a comprehensive master data system that supplies all the reference information needed to create valid fines. This includes everything from traffic violation codes to municipality lists and vehicle models.
+
+## What is Master Data?
+
+Master data consists of reference tables and lookup information that:
+
+- Define valid values for fine attributes
+- Provide descriptive information (e.g., violation descriptions)
+- Enable offline validation
+- Ensure data consistency across the system
+
+<Info>
+Master data is centrally managed by ORGT and synchronized to client devices. You cannot modify master data - only consume it.
+</Info>
+
+## Types of Master Data
+
+The system provides multiple categories of master data:
+
+### 1. Municipalities (Municipis)
+
+Complete list of municipalities with codes and names.
+
+**Structure:**
+```xml
+<ActualitzacioMunicipi>
+  <Cdclie>088</Cdclie>  <!-- ORGT municipality code -->
+  <cine10>0809240005</cine10>  <!-- 10-digit INE code -->
+  <dsnom1>AJUNTAMENT DE</dsnom1>
+  <dsnom2> SANTA COLOMA DE GRAMENET</dsnom2>
+  <dsnomc>SANTA COLOMA DE GRAMENET</dsnomc>
+</ActualitzacioMunicipi>
+```
+
+**Use cases:**
+- Validate municipality codes in fines
+- Display municipality names in UI
+- Map between ORGT and INE coding systems
+
+### 2. Violations (Conductes)
+
+Traffic violation codes with associated regulations and penalties.
+
+**Structure:**
+```xml
+<ActualitzacioConducta>
+  <sqcond>8430</sqcond>  <!-- Sequential conduct ID -->
+  <regl>1655</regl>  <!-- Regulation number -->
+  <cdapar>20</cdapar>  <!-- Article -->
+  <cdsapa>1</cdsapa>  <!-- Sub-article -->
+  <cdcond>1</cdcond>  <!-- Conduct number -->
+  <dscoc1>EXCÉS VELOCITAT</dscoc1>  <!-- Catalan description line 1 -->
+  <dscoc2>MÉS DE 50 KM/H</dscoc2>  <!-- Catalan description line 2 -->
+  <dscoe1>EXCESO VELOCIDAD</dscoe1>  <!-- Spanish description line 1 -->
+  <dscoe2>MÁS DE 50 KM/H</dscoe2>  <!-- Spanish description line 2 -->
+  <import>600</import>  <!-- Fine amount in euros -->
+  <impbon>300</impbon>  <!-- Reduced amount if paid early -->
+  <perbon>20</perbon>  <!-- Reduction percentage -->
+  <npunts>6</npunts>  <!-- License points lost -->
+  <grainf>G</grainf>  <!-- Severity: L=Leve, G=Grave, MG=Muy Grave -->
+  <numdies>20</numdies>  <!-- Days to pay reduced amount -->
+</ActualitzacioConducta>
+```
+
+**Key field:** `sqcond` is the unique sequential ID used in the `Sqcond` field when creating fines.
+
+### 3. Articles (Articles)
+
+Regulation articles that violations reference.
+
+**Structure:**
+```xml
+<ActualitzacioArticle>
+  <sqregl>1655</sqregl>  <!-- Sequential regulation ID -->
+  <cnorma>RGC</cnorma>  <!-- Regulation code -->
+  <artreg>20</artreg>  <!-- Article number -->
+  <dsarti>NIVELLS D'ALCOHOL EN SANG I AIRE ESPIRAT</dsarti>
+</ActualitzacioArticle>
+```
+
+### 4. Organs (Organs)
+
+Instructor and sanctioning authorities for each municipality.
+
+**Structure:**
+```xml
+<ActualitzacioOrgan>
+  <Cdclie>088</Cdclie>
+  <orgins>POLICIA LOCAL</orgins>  <!-- Instructor organ -->
+  <orgsan>ALCALDIA</orgsan>  <!-- Sanctioning organ -->
+</ActualitzacioOrgan>
+```
+
+### 5. Streets (Carrerer)
+
+Street directory for each municipality.
+
+**Structure:**
+```xml
+<ActualitzacioCarrerer>
+  <Cdclie>088</Cdclie>
+  <codvia>CR</codvia>  <!-- Street type code -->
+  <sigles>CR</sigles>  <!-- Abbreviation -->
+  <carrer>ARAGÓ</carrer>  <!-- Street name -->
+</ActualitzacioCarrerer>
+```
+
+**Common street type codes:**
+- `CR` - Carrer (Street)
+- `AV` - Avinguda (Avenue)
+- `PL` - Plaça (Square)
+- `PS` - Passeig (Boulevard)
+
+### 6. Vehicle Models (Models)
+
+Vehicle makes and models.
+
+**Structure:**
+```xml
+<ActualitzacioModel>
+  <marca>SEAT</marca>  <!-- Vehicle make -->
+  <model>IBIZA</model>  <!-- Vehicle model -->
+</ActualitzacioModel>
+```
+
+### 7. Colors (Colors)
+
+Standardized vehicle color codes.
+
+**Structure:**
+```xml
+<ActualitzacioColor>
+  <codiColor>GR</codiColor>  <!-- Color code -->
+  <color>GRIS</color>  <!-- Color name -->
+</ActualitzacioColor>
+```
+
+### 8. Motives (Motius)
+
+Reasons for various actions (used in specific workflows).
+
+**Structure:**
+```xml
+<ActualitzacioMotiu>
+  <cdmotiu>01</cdmotiu>
+  <motcat>VEHICLE MAL ESTACIONAT</motcat>
+  <motesp>VEHÍCULO MAL ESTACIONADO</motesp>
+</ActualitzacioMotiu>
+```
+
+### 9. Sealed Vehicles (VehiclesPrecintats)
+
+List of vehicles with seals/immobilization orders.
+
+**Structure:**
+```xml
+<ActualitzacioVehiclePrecintat>
+  <Cdclie>088</Cdclie>
+  <vehicle>1234ABC</vehicle>  <!-- License plate -->
+  <matedi>20260304</matedi>  <!-- Seal date -->
+</ActualitzacioVehiclePrecintat>
+```
+
+### 10. Documents (Documents)
+
+PDF documents relevant to fine processing.
+
+**Structure:**
+```xml
+<ActualitzacioDocument>
+  <numdoc>1</numdoc>
+  <abast>G</abast>  <!-- Scope: G=General, M=Municipality -->
+  <dsdocu>NORMATIVA TRÀNSIT 2026</dsdocu>
+  <fitxer>normativa2026.pdf</fitxer>
+</ActualitzacioDocument>
+```
+
+## Synchronization Process
+
+Master data synchronization is a critical part of maintaining an up-to-date local database.
+
+### Initial Synchronization
+
+When first implementing the API, download all master data:
+
+**Request:**
+```
+GET /ObtenirActualitzacions
+  ?pIMEI=353947020131525
+  &pClient=088
+  &pData=190001010000
+  &pSeguent=
+```
+
+**Parameters:**
+- `pIMEI` - Your device identifier
+- `pClient` - Municipality code
+- `pData` - Date in format `yyyyMMddHHmm` (use `190001010000` for initial sync)
+- `pSeguent` - Empty string for first request
+
+<Info>
+Using date `1900-01-01` ensures you receive all master data records from the beginning of the system.
+</Info>
+
+### Incremental Updates
+
+After initial synchronization, request only changes since last update:
+
+**Request:**
+```
+GET /ObtenirActualitzacions
+  ?pIMEI=353947020131525
+  &pClient=088
+  &pData=202603041430
+  &pSeguent=
+```
+
+**Response includes:**
+- Only records modified since the specified date
+- A `Seguent` value if there are more pages
+
+### Pagination
+
+Master data responses are paginated to prevent overwhelming data transfers:
+
+**Response:**
+```xml
+<Actualitzacions>
+  <Seguent>ART00342261</Seguent>  <!-- Pagination token -->
+  <Articles>...</Articles>
+  <Conductes>...</Conductes>
+  ...
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+  </Retorn>
+</Actualitzacions>
+```
+
+**If `Seguent` is not empty:**
+
+```
+GET /ObtenirActualitzacions
+  ?pIMEI=353947020131525
+  &pClient=088
+  &pData=202603041430
+  &pSeguent=ART00342261
+```
+
+**Continue until `Seguent` is empty.**
+
+### Complete Synchronization Workflow
+
+```
+┌─────────────────────┐
+│  Start Sync         │
+│  Date: 1900-01-01   │
+│  Seguent: (empty)   │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Request Page 1     │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Receive Data       │
+│  Seguent: ART00342  │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Store Locally      │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  More Pages?        │
+│  (Seguent not empty)│
+└──────────┬──────────┘
+           │ Yes
+           ▼
+┌─────────────────────┐
+│  Request Page 2     │
+│  Seguent: ART00342  │
+└──────────┬──────────┘
+           │
+           ▼
+       (repeat)
+           │
+           ▼
+┌─────────────────────┐
+│  Final Page         │
+│  Seguent: (empty)   │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│  Sync Complete      │
+│  Save Last Update   │
+│  Date: 2026-03-04   │
+└─────────────────────┘
+```
+
+## Update Types
+
+Each master data record includes a `TipusActualitzacio` field:
+
+```xml
+<TipusActualitzacio>0</TipusActualitzacio>
+```
+
+| Value | Type | Action |
+|-------|------|--------|
+| `0` | Alta (Addition) | Insert new record |
+| `1` | Baixa (Deletion) | Delete existing record |
+| `2` | Modificacio (Modification) | Update existing record |
+
+**Example processing:**
+
+```javascript
+function processMasterDataUpdate(update) {
+  switch (update.TipusActualitzacio) {
+    case 0: // Alta
+      database.insert(update);
+      break;
+    case 1: // Baixa
+      database.delete(update.primaryKey);
+      break;
+    case 2: // Modificacio
+      database.update(update.primaryKey, update);
+      break;
+  }
+}
+```
+
+## Retrieving Documents
+
+PDF documents referenced in master data are retrieved separately:
+
+**Step 1: Get document list from master data**
+```xml
+<ActualitzacioDocument>
+  <fitxer>normativa2026.pdf</fitxer>
+  ...
+</ActualitzacioDocument>
+```
+
+**Step 2: Download the document**
+```
+POST /BuscarFitxer
+Body:
+{
+  "pNomFitxer": "normativa2026.pdf"
+}
+```
+
+**Response:**
+```xml
+<tRetorn>
+  <CodiRetorn>0</CodiRetorn>
+  <pFitxer>Base64EncodedPDFContent...</pFitxer>
+</tRetorn>
+```
+
+## Using Master Data
+
+### Validating Fine Data
+
+Before submitting a fine, validate against master data:
+
+```javascript
+function validateFine(fine) {
+  // Check municipality exists
+  const municipality = masterData.municipalities
+    .find(m => m.Cdclie === fine.Cdclie);
+  if (!municipality) {
+    throw new Error('Invalid municipality code');
+  }
+  
+  // Check conduct code exists
+  const conduct = masterData.conductes
+    .find(c => c.sqcond === fine.Sqcond);
+  if (!conduct) {
+    throw new Error('Invalid conduct code');
+  }
+  
+  // Check vehicle model exists
+  const model = masterData.models
+    .find(m => m.marca === fine.Marca && m.model === fine.Model);
+  if (!model) {
+    console.warn('Vehicle model not in master data');
+  }
+  
+  return true;
+}
+```
+
+### Building User Interfaces
+
+Master data enables rich, validated UI components:
+
+```javascript
+// Violation dropdown
+const conductSelect = masterData.conductes.map(c => ({
+  value: c.sqcond,
+  label: `${c.dscoc1} - €${c.import}`,
+  points: c.npunts,
+  description: `${c.dscoc1} ${c.dscoc2}`.trim()
+}));
+
+// Street autocomplete
+const streetSuggestions = masterData.carrerer
+  .filter(s => s.Cdclie === currentMunicipality)
+  .map(s => `${s.codvia} ${s.carrer}`);
+
+// Vehicle model autocomplete
+const vehicleModels = masterData.models
+  .filter(m => m.marca === selectedMake)
+  .map(m => m.model);
+```
+
+### Auto-Populating Fine Details
+
+Use master data to automatically fill in fine details:
+
+```javascript
+function selectConduct(sqcond) {
+  const conduct = masterData.conductes.find(c => c.sqcond === sqcond);
+  
+  return {
+    Sqcond: conduct.sqcond,
+    Immult: conduct.import,      // Fine amount
+    Imppag: conduct.impbon,      // Reduced amount
+    // Description can be shown in UI
+    description: {
+      catalan: `${conduct.dscoc1} ${conduct.dscoc2} ${conduct.dscoc3}`.trim(),
+      spanish: `${conduct.dscoe1} ${conduct.dscoe2} ${conduct.dscoe3}`.trim()
+    },
+    points: conduct.npunts,
+    severity: conduct.grainf
+  };
+}
+```
+
+## Synchronization Best Practices
+
+### 1. Sync Frequency
+
+**Recommended schedule:**
+- **Initial:** Complete sync when first deploying
+- **Daily:** Incremental sync for active applications
+- **Startup:** Quick check for updates when application launches
+- **Manual:** Provide manual refresh option for users
+
+```javascript
+// Daily sync at 3 AM
+schedule.daily('03:00', async () => {
+  await syncMasterData();
+});
+
+// Startup check
+app.on('ready', async () => {
+  const lastSync = getLastSyncDate();
+  const hoursSinceSync = (Date.now() - lastSync) / (1000 * 60 * 60);
+  
+  if (hoursSinceSync > 24) {
+    await syncMasterData();
+  }
+});
+```
+
+### 2. Store Last Sync Date
+
+Track when data was last synchronized:
+
+```javascript
+const syncMetadata = {
+  lastSync: '202603041430',
+  recordCounts: {
+    municipalities: 311,
+    conductes: 1453,
+    articles: 234,
+    models: 5672
+  }
+};
+
+localStorage.setItem('masterDataSync', JSON.stringify(syncMetadata));
+```
+
+### 3. Handle Pagination Properly
+
+```javascript
+async function syncAllMasterData(imei, client, fromDate) {
+  let seguent = '';
+  let allData = {
+    conductes: [],
+    articles: [],
+    municipis: []
+    // ... other types
+  };
+  
+  do {
+    const response = await fetch(
+      `/ObtenirActualitzacions?pIMEI=${imei}&pClient=${client}` +
+      `&pData=${fromDate}&pSeguent=${seguent}`
+    );
+    
+    const data = await parseXML(response);
+    
+    // Append data from this page
+    allData.conductes.push(...data.Conductes);
+    allData.articles.push(...data.Articles);
+    // ... other types
+    
+    seguent = data.Seguent;
+    
+  } while (seguent !== '');
+  
+  return allData;
+}
+```
+
+### 4. Validate Data Integrity
+
+```javascript
+function validateMasterData(data) {
+  // Check for required fields
+  data.conductes.forEach(c => {
+    if (!c.sqcond || !c.import) {
+      console.error('Invalid conduct record', c);
+    }
+  });
+  
+  // Check for orphaned references
+  data.conductes.forEach(c => {
+    const articleExists = data.articles
+      .some(a => a.sqregl === c.regl);
+    if (!articleExists) {
+      console.warn(`Conduct ${c.sqcond} references missing article ${c.regl}`);
+    }
+  });
+}
+```
+
+### 5. Handle Sync Failures
+
+```javascript
+async function syncWithRetry(maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await syncMasterData();
+      return; // Success
+    } catch (error) {
+      console.error(`Sync attempt ${i + 1} failed:`, error);
+      
+      if (i === maxRetries - 1) {
+        // Final attempt failed
+        notifyUser('Master data sync failed. Using cached data.');
+        throw error;
+      }
+      
+      // Wait before retrying
+      await sleep(Math.pow(2, i) * 1000); // Exponential backoff
+    }
+  }
+}
+```
+
+## Offline Considerations
+
+Master data synchronization is designed to support offline operation:
+
+### Local Storage
+
+Store complete master data locally:
+
+```javascript
+// IndexedDB for large datasets
+const db = await openDB('altaMultes', 1, {
+  upgrade(db) {
+    db.createObjectStore('conductes', { keyPath: 'sqcond' });
+    db.createObjectStore('articles', { keyPath: 'sqregl' });
+    db.createObjectStore('municipis', { keyPath: 'Cdclie' });
+    // ... other stores
+  }
+});
+
+// Store master data
+await db.put('conductes', conductData);
+```
+
+### Validation Without Connectivity
+
+With locally stored master data:
+
+```javascript
+// Works offline
+function getViolationDetails(sqcond) {
+  return localDB.conductes.get(sqcond);
+}
+
+// Build UI offline
+function populateViolationDropdown() {
+  return localDB.conductes.getAll();
+}
+```
+
+### Sync When Connected
+
+Update local data when connectivity is restored:
+
+```javascript
+window.addEventListener('online', async () => {
+  console.log('Connection restored, syncing master data...');
+  await syncMasterData();
+});
+```
+
+## Troubleshooting
+
+### Problem: Huge initial sync
+
+**Solution:** Implement pagination correctly and process in batches
+
+```javascript
+async function syncInBatches() {
+  let seguent = '';
+  let batchNumber = 1;
+  
+  do {
+    console.log(`Fetching batch ${batchNumber}...`);
+    const data = await fetchPage(seguent);
+    await processBatch(data);
+    seguent = data.Seguent;
+    batchNumber++;
+  } while (seguent);
+}
+```
+
+### Problem: Outdated master data
+
+**Solution:** Verify sync date and force refresh
+
+```javascript
+const lastSync = getLastSyncDate();
+if (Date.now() - lastSync > 7 * 24 * 60 * 60 * 1000) {
+  console.warn('Master data is over 7 days old!');
+  await forceSyncMasterData();
+}
+```
+
+### Problem: Missing violation codes
+
+**Solution:** Check sync completeness
+
+```javascript
+function validateSyncCompleteness() {
+  const minExpectedConducts = 1000;
+  const actualConducts = masterData.conductes.length;
+  
+  if (actualConducts < minExpectedConducts) {
+    console.error('Incomplete conduct data, re-syncing...');
+    return false;
+  }
+  return true;
+}
+```

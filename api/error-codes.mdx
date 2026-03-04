@@ -1,0 +1,345 @@
+---
+title: 'Error Codes'
+description: 'Complete reference for Alta Multes API error codes and responses'
+---
+
+## Overview
+
+The Alta Multes API returns standardized error codes in the `tRetorn` object. All responses include a `CodiRetorn` (return code) and optional `DescRetorn` (description).
+
+## Standard Response Format
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <CodiRetorn>0</CodiRetorn>
+  <DescRetorn/>
+</tRetorn>
+```
+
+## General Error Code Patterns
+
+Across all endpoints, these error code patterns apply:
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| `0` | Success | Operation completed successfully |
+| `1` | Warning | Operation succeeded with conditions (see endpoint details) |
+| `-1` | Application Error | Endpoint-specific error (see below) |
+| `-2` to `-8` | Specific Errors | Endpoint-specific errors (see below) |
+| `-9000` | Uncontrolled Exception | General exception or unexpected error |
+| Other negative | Database Error | Database operation failed |
+
+<Warning>
+Always check the `CodiRetorn` value. A negative value indicates an error, even if the HTTP status is 200.
+</Warning>
+
+## Endpoint-Specific Error Codes
+
+### AltaMulta (Register Infraction)
+
+**Endpoint**: `POST /AltaMulta`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Infraction registered successfully |
+| `-1` | Database Insert Failed | Could not add infraction to database |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+**Common causes of errors:**
+- XML fields not in alphabetical order
+- Invalid expedition number (outside assigned range)
+- Missing required fields
+- Invalid field values or formats
+- Text not in uppercase
+
+```xml
+<!-- Error response example -->
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <CodiRetorn>-1</CodiRetorn>
+  <DescRetorn>Error al grabar la multa</DescRetorn>
+</tRetorn>
+```
+
+### AltaAnulada (Cancel Infraction)
+
+**Endpoint**: `GET /AltaAnulada`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Cancellation recorded (but see notes below) |
+| `1` | Already Cancelled | Infraction with this number already cancelled (possibly different municipality) |
+| `-1` | Database Save Failed | Could not save cancellation to database |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+<Warning>
+**Important**: Even with `CodiRetorn=0`, the cancellation may not be processed if:
+- Infraction has a date/proposal or no balance available
+- Infraction is transferred
+- Infraction is in a blocked executive file
+- An appeal or recourse has been submitted
+- The infraction has a sanction and payment deadline has expired
+
+Cancellations are processed asynchronously from an intermediate database.
+</Warning>
+
+### Consulta (Query Infraction)
+
+**Endpoint**: `GET /Consulta`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Infraction found and returned |
+| Negative | Error | Database error or infraction not found |
+
+**Returns**: `MultaExtended` object with infraction details
+
+### ObtenirRang (Get Expedition Range)
+
+**Endpoint**: `GET /ObtenirRang`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Range assigned successfully |
+| `-1` | Application Error | Could not assign range |
+| `-9000` | Uncontrolled Exception | General error |
+
+**Common causes:**
+- Invalid IMEI (not registered)
+- Device already has an active range
+- No available ranges for the municipality
+
+```xml
+<!-- Success response with range -->
+<Rang xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+  <Minrang1>1590621</Minrang1>
+  <MaxRang1>1590630</MaxRang1>
+  <MinRang2>1590631</MinRang2>
+  <MaxRang2>1590640</MaxRang2>
+</Rang>
+```
+
+### FerLogin (Agent Login)
+
+**Endpoint**: `GET /FerLogin`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Authentication successful |
+| `-1` | Device Not Found | IMEI not registered or password not set |
+| `-2` | Agent Mismatch | Agent does not belong to device's municipality |
+| `-3` | Wrong Password | Incorrect password provided |
+| `-4` | Password Change Failed | Database error updating password |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+```xml
+<!-- Success response -->
+<LoginResult xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+  <Client>088</Client>
+  <DiaiHora>04/03/2026 14:30:00</DiaiHora>
+  <Canviar>false</Canviar>
+</LoginResult>
+```
+
+### CanviPassword (Change Password)
+
+**Endpoint**: `GET /CanviPassword`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Password changed successfully |
+| `-1` | Device Not Found | IMEI not registered or new password not provided |
+| `-2` | Agent Mismatch | Agent does not belong to device's municipality |
+| `-3` | Wrong Old Password | Current password is incorrect |
+| `-4` | Database Update Failed | Could not update password in database |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+### ObtenirEscuts (Get Municipality Emblems)
+
+**Endpoint**: `GET /ObtenirEscuts`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Emblems returned (or no changes if pForsar=false) |
+| `-1` | Invalid Device | IMEI number is not correct |
+| `-2` | No Emblems | Municipality has no associated emblems |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+### ObtenirActualitzacions (Get Updates)
+
+**Endpoint**: `GET /ObtenirActualitzacions`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Updates retrieved successfully |
+| `-9000` | Uncontrolled Exception | General error |
+
+**Returns**: `Actualitzacions` object with master file updates and a `Seguent` (next) parameter for pagination.
+
+<Info>
+Make successive calls with the `Seguent` value from the previous response until it returns empty, indicating no more updates.
+</Info>
+
+### BuscarPrecintat (Check Vehicle Seal)
+
+**Endpoint**: `POST /BuscarPrecintat`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Query completed |
+| `-1` | Application Error | Error checking seal status |
+| `-9000` | Uncontrolled Exception | General error |
+
+### BuscarFitxer (Download File)
+
+**Endpoint**: `POST /BuscarFitxer`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | File downloaded successfully |
+| `-9000` | Uncontrolled Exception | General error or file not found |
+
+### ComprovarSoftware (Check Software)
+
+**Endpoint**: `POST /ComprovarSoftware`
+
+| Code | Meaning | Details |
+|------|---------|----------|
+| `0` | Success | Software version checked |
+| `-1` | Executable Not Found | Requested executable not available |
+| `-9000` | Uncontrolled Exception | General error |
+| Other negative | Database Error | Database operation error |
+
+## Error Handling Best Practices
+
+### 1. Always Check Return Code
+
+```python
+import xml.etree.ElementTree as ET
+
+def check_response(xml_response):
+    root = ET.fromstring(xml_response)
+    ns = {'ns': 'http://schemas.datacontract.org/2004/07/WcfMultesPDA'}
+    
+    code = int(root.find('.//ns:CodiRetorn', ns).text)
+    desc = root.find('.//ns:DescRetorn', ns).text or ''
+    
+    if code < 0:
+        raise Exception(f"API Error {code}: {desc}")
+    elif code == 1:
+        # Warning - operation succeeded with conditions
+        print(f"Warning: {desc}")
+    
+    return code, desc
+```
+
+### 2. Handle Specific Error Codes
+
+```python
+def handle_login_error(code, desc):
+    if code == -1:
+        return "Device not registered. Contact ORGT."
+    elif code == -2:
+        return "Agent does not belong to this municipality."
+    elif code == -3:
+        return "Incorrect password."
+    elif code == -4:
+        return "Database error. Try again later."
+    elif code == -9000:
+        return f"System error: {desc}"
+    else:
+        return f"Unknown error {code}: {desc}"
+```
+
+### 3. Retry Logic for Transient Errors
+
+```python
+import time
+
+def call_api_with_retry(func, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            code, desc = func()
+            
+            # Retry on database errors
+            if code < 0 and code != -9000 and code not in [-1, -2, -3, -4]:
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+            
+            return code, desc
+            
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt)
+```
+
+### 4. Log All Errors
+
+<Warning>
+Always log the full error response including `CodiRetorn` and `DescRetorn` for debugging and audit purposes.
+</Warning>
+
+```python
+import logging
+
+def log_api_error(endpoint, code, desc, request_data=None):
+    logging.error(
+        f"API Error - Endpoint: {endpoint}, Code: {code}, "
+        f"Description: {desc}, Request: {request_data}"
+    )
+```
+
+## Common Error Scenarios
+
+### XML Field Ordering Error (AltaMulta)
+
+**Symptom**: `-1` return code when submitting infractions
+
+**Cause**: XML fields not in alphabetical order
+
+**Solution**: Ensure fields are sorted alphabetically (cdagen first, viapen last)
+
+### IMEI Not Registered
+
+**Symptom**: `-1` return code on login or range requests
+
+**Cause**: Device IMEI not registered with ORGT
+
+**Solution**: Contact ORGT to register the IMEI
+
+### Certificate Authentication Failed
+
+**Symptom**: HTTPS connection error before reaching the API
+
+**Cause**: Certificate not installed on ORGT servers or incorrect client certificate
+
+**Solution**: Verify certificate with ORGT, ensure using correct cert files
+
+### Invalid Expedition Number
+
+**Symptom**: `-1` return code when creating infraction
+
+**Cause**: Expedition number outside assigned range
+
+**Solution**: Request a new range using `ObtenirRang`
+
+## Next Steps
+
+- [API Overview](/api/overview) - Architecture and design
+- [Environments](/api/environments) - Environment URLs and setup
+- [FerLogin](/api/endpoints/fer-login) - Authenticate your device
+- [ObtenirActualitzacions](/api/endpoints/obtenir-actualitzacions) - Get master data updates

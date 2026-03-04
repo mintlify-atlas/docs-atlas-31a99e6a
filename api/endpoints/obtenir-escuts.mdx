@@ -1,0 +1,348 @@
+---
+title: 'ObtenirEscuts'
+description: 'Retrieve municipality coat of arms for display and printing'
+api: 'GET /ObtenirEscuts'
+---
+
+## Overview
+
+The `ObtenirEscuts` endpoint retrieves the coat of arms (badge/shield) for a municipality associated with a specific device. Two versions are provided:
+
+1. **Escut1** - Optimized for screen display
+2. **Escut2** - Optimized for printing on tickets/receipts
+
+This endpoint is recommended over the deprecated `BuscarEscuts` endpoint.
+
+## Authentication
+
+Requires device authentication via IMEI. The municipality is determined from the device registration.
+
+## Query Parameters
+
+<ParamField query="pIMEI" type="string" required>
+  Device identifier: maximum 15 alphanumeric positions
+  
+  **Example:** `353947020131525`
+</ParamField>
+
+<ParamField query="pForsar" type="boolean" required>
+  Force download flag:
+  
+  - `true`: Forces download of both coat of arms regardless of changes
+  - `false`: Only downloads if changed since last request
+  
+  **Recommendation:** Use `false` for periodic checks to reduce bandwidth, use `true` only for initial setup or forced refresh.
+</ParamField>
+
+## Response Schema
+
+<ResponseField name="Escuts" type="object">
+  Root element containing coat of arms data
+
+  <ResponseField name="Retorn" type="object" required>
+    Operation result information
+    
+    <ResponseField name="CodiRetorn" type="integer">
+      Return code indicating success or error:
+      
+      - `0`: Success
+      - `-1`: Device identifier not found or incorrect
+      - `-2`: Municipality has no associated coat of arms
+      - `-9000`: Unhandled exception
+      - Other negative values: Database error
+    </ResponseField>
+    
+    <ResponseField name="DescRetorn" type="string">
+      Description of the error (empty on success)
+    </ResponseField>
+  </ResponseField>
+
+  <ResponseField name="Escut1" type="byte[]">
+    Coat of arms for screen display (Base64 encoded image)
+    
+    - Typically PNG or JPEG format
+    - Optimized for lower resolution displays
+    - Smaller file size
+    - Returns `null` if not changed (when `pForsar=false`)
+  </ResponseField>
+
+  <ResponseField name="Escut2" type="byte[]">
+    Coat of arms for printing (Base64 encoded image)
+    
+    - Typically higher resolution PNG or JPEG
+    - Optimized for ticket/receipt printers
+    - Larger file size for better print quality
+    - Returns `null` if not changed (when `pForsar=false`)
+  </ResponseField>
+</ResponseField>
+
+## XML Response Example
+
+### Success Response (No Changes)
+
+```xml
+<Escuts xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Escut1 i:nil="true"/>
+	<Escut2 i:nil="true"/>
+	<Retorn>
+		<CodiRetorn>0</CodiRetorn>
+		<DescRetorn/>
+	</Retorn>
+</Escuts>
+```
+
+### Success Response (With Images)
+
+```xml
+<Escuts xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Escut1>/9j/4AAQSkZJRgABAQEAYABgAAD...</Escut1>
+	<Escut2>iVBORw0KGgoAAAANSUhEUgAAA...</Escut2>
+	<Retorn>
+		<CodiRetorn>0</CodiRetorn>
+		<DescRetorn/>
+	</Retorn>
+</Escuts>
+```
+
+### Error Response (Device Not Found)
+
+```xml
+<Escuts xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Escut1 i:nil="true"/>
+	<Escut2 i:nil="true"/>
+	<Retorn>
+		<CodiRetorn>-1</CodiRetorn>
+		<DescRetorn>Dispositiu no trobat</DescRetorn>
+	</Retorn>
+</Escuts>
+```
+
+### Error Response (No Coat of Arms)
+
+```xml
+<Escuts xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Escut1 i:nil="true"/>
+	<Escut2 i:nil="true"/>
+	<Retorn>
+		<CodiRetorn>-2</CodiRetorn>
+		<DescRetorn>El municipi no té escuts associats</DescRetorn>
+	</Retorn>
+</Escuts>
+```
+
+## Error Codes
+
+| Code | Description | Resolution |
+|------|-------------|------------|
+| 0 | Success | Coat of arms retrieved successfully or no changes detected |
+| -1 | Device not found | Verify the IMEI is correct and device is registered |
+| -2 | No coat of arms | Municipality has no associated coat of arms imagery |
+| -9000 | Unhandled exception | Contact API support with request details |
+| Other negative | Database error | Retry request; contact support if persists |
+
+## Image Format
+
+The coat of arms images are returned as Base64-encoded byte arrays:
+
+- **Encoding:** Base64
+- **Format:** Typically PNG or JPEG
+- **Escut1:** Lower resolution (72-150 DPI)
+- **Escut2:** Higher resolution (300+ DPI)
+
+## Usage Patterns
+
+### Initial Download (Force)
+
+On first run or application setup, force download of coat of arms:
+
+```javascript
+const downloadEscuts = async (imei) => {
+  const response = await fetch(
+    `/ObtenirEscuts?pIMEI=${imei}&pForsar=true`
+  );
+  const xmlText = await response.text();
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+  
+  const codiRetorn = parseInt(
+    xmlDoc.getElementsByTagName('CodiRetorn')[0].textContent
+  );
+  
+  if (codiRetorn !== 0) {
+    throw new Error('Failed to retrieve coat of arms');
+  }
+  
+  const escut1 = xmlDoc.getElementsByTagName('Escut1')[0]?.textContent;
+  const escut2 = xmlDoc.getElementsByTagName('Escut2')[0]?.textContent;
+  
+  if (escut1 && escut2) {
+    // Save to local storage
+    localStorage.setItem('escut_display', escut1);
+    localStorage.setItem('escut_print', escut2);
+  }
+  
+  return { escut1, escut2 };
+};
+```
+
+### Periodic Check (Incremental)
+
+Periodically check for updated coat of arms:
+
+```javascript
+const checkEscutsUpdates = async (imei) => {
+  const response = await fetch(
+    `/ObtenirEscuts?pIMEI=${imei}&pForsar=false`
+  );
+  const xmlText = await response.text();
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+  
+  const codiRetorn = parseInt(
+    xmlDoc.getElementsByTagName('CodiRetorn')[0].textContent
+  );
+  
+  if (codiRetorn !== 0) {
+    console.log('No updates or error:', codiRetorn);
+    return null;
+  }
+  
+  const escut1Element = xmlDoc.getElementsByTagName('Escut1')[0];
+  const escut2Element = xmlDoc.getElementsByTagName('Escut2')[0];
+  
+  // Check if nil attribute is present (no changes)
+  const hasUpdates = !escut1Element.getAttribute('i:nil') || 
+                     !escut2Element.getAttribute('i:nil');
+  
+  if (hasUpdates) {
+    const escut1 = escut1Element.textContent;
+    const escut2 = escut2Element.textContent;
+    
+    // Update local storage
+    if (escut1) localStorage.setItem('escut_display', escut1);
+    if (escut2) localStorage.setItem('escut_print', escut2);
+    
+    return { escut1, escut2 };
+  }
+  
+  return null; // No changes
+};
+```
+
+### Displaying Coat of Arms
+
+Convert Base64 to displayable image:
+
+```javascript
+const displayEscut = (base64Data, imageElement) => {
+  if (!base64Data) return;
+  
+  // Detect image format from Base64 header
+  let mimeType = 'image/jpeg';
+  if (base64Data.startsWith('/9j/')) {
+    mimeType = 'image/jpeg';
+  } else if (base64Data.startsWith('iVBORw')) {
+    mimeType = 'image/png';
+  }
+  
+  // Create data URL
+  const dataUrl = `data:${mimeType};base64,${base64Data}`;
+  
+  // Set image source
+  imageElement.src = dataUrl;
+};
+
+// Usage
+const escut1 = localStorage.getItem('escut_display');
+const imgElement = document.getElementById('municipalityBadge');
+displayEscut(escut1, imgElement);
+```
+
+### Printing Coat of Arms on Tickets
+
+```javascript
+const printTicketWithEscut = (ticketData) => {
+  const escut2 = localStorage.getItem('escut_print');
+  
+  if (!escut2) {
+    console.warn('No print coat of arms available');
+    return;
+  }
+  
+  // Convert to image for printing
+  const printImage = new Image();
+  printImage.src = `data:image/png;base64,${escut2}`;
+  
+  printImage.onload = () => {
+    // Send to thermal printer or generate PDF
+    const printWindow = window.open('', '', 'width=300,height=600');
+    printWindow.document.write('<html><head><title>Ticket</title></head><body>');
+    printWindow.document.write(`<img src="${printImage.src}" style="width:100%;" />`);
+    printWindow.document.write(`<div>${ticketData.content}</div>`);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+  };
+};
+```
+
+### Error Handling
+
+```javascript
+const handleEscutsResponse = async (imei, forsar) => {
+  try {
+    const response = await fetch(
+      `/ObtenirEscuts?pIMEI=${imei}&pForsar=${forsar}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const xmlText = await response.text();
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    
+    const codiRetorn = parseInt(
+      xmlDoc.getElementsByTagName('CodiRetorn')[0].textContent
+    );
+    const descRetorn = xmlDoc.getElementsByTagName('DescRetorn')[0]?.textContent;
+    
+    switch (codiRetorn) {
+      case 0:
+        // Success - process images
+        return processEscutsImages(xmlDoc);
+        
+      case -1:
+        throw new Error('Device not found. Please check IMEI.');
+        
+      case -2:
+        console.warn('Municipality has no coat of arms configured');
+        return null;
+        
+      case -9000:
+        throw new Error('Server error occurred. Please try again later.');
+        
+      default:
+        throw new Error(`Database error: ${descRetorn || codiRetorn}`);
+    }
+  } catch (error) {
+    console.error('Error retrieving coat of arms:', error);
+    throw error;
+  }
+};
+```
+
+## Best Practices
+
+1. **Cache locally:** Store coat of arms images in local storage to avoid repeated downloads
+2. **Check incrementally:** Use `pForsar=false` for regular checks to minimize bandwidth
+3. **Handle nil values:** Check for `i:nil="true"` attribute to detect unchanged images
+4. **Validate IMEI:** Ensure device is properly registered before calling this endpoint
+5. **Graceful degradation:** Application should work even if coat of arms is not available
+
+## Related Endpoints
+
+- [FerLogin](/api/endpoints/fer-login) - Device login that associates IMEI with municipality
+- [ObtenirMunicipis](/api/endpoints/obtenir-municipis) - Get list of municipalities
+- [ObtenirActualitzacions](/api/endpoints/obtenir-actualitzacions) - Get master data updates

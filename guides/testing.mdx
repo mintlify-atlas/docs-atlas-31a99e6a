@@ -1,0 +1,371 @@
+---
+title: 'Testing'
+description: 'Pre-production testing process and production connectivity verification'
+---
+
+## Testing Requirements
+
+<Warning>
+**You must test in pre-production before using the production API.** Production access is only granted after successful pre-production testing.
+</Warning>
+
+Before consuming the production API, you must:
+
+1. Complete the adhesion process
+2. Communicate your certificate and IMEIs to ORGT
+3. Conduct thorough testing in the pre-production environment
+4. Verify production connectivity with test fines
+
+## Testing Environments
+
+### Pre-Production Environment
+
+**Base URL:** `https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/`
+
+**Purpose:**
+- Full API testing without affecting production data
+- Certificate verification
+- IMEI registration validation
+- Integration testing
+
+**Resources:**
+- **XSD Schema:** https://pdaprv16.orgt.diba.cat/RestMultesPDA/schema/svcMultesPDA.xsd
+- **WSDL:** https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc?singleWsdl
+
+### Production Environment
+
+**Base URL:** `https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/`
+
+**Purpose:**
+- Live fine submissions
+- Production data operations
+- Real municipality processing
+
+<Note>
+The same certificate works for both pre-production and production environments.
+</Note>
+
+## Pre-Production Testing Process
+
+<Steps>
+  <Step title="Verify certificate access">
+    Test that your certificate allows connection to the pre-production API:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirMunicipis"
+    ```
+    
+    You should receive a valid XML response with municipality data.
+  </Step>
+  
+  <Step title="Test device login">
+    Verify your IMEI is registered by attempting login:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/FerLogin?CodiAgent=TEST1&Password=testpass&IMEI=YOUR_IMEI"
+    ```
+    
+    Expected response:
+    ```xml
+    <LoginResult>
+      <Retorn>
+        <CodiRetorn>0</CodiRetorn>
+      </Retorn>
+      <Client>088</Client>
+      <DiaiHora>04/03/2026 11:30:00</DiaiHora>
+      <Canviar>false</Canviar>
+    </LoginResult>
+    ```
+  </Step>
+  
+  <Step title="Request expedition ranges">
+    Test obtaining expedition number ranges:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=YOUR_IMEI&pEstat1=1&pEstat2=1"
+    ```
+  </Step>
+  
+  <Step title="Download master data">
+    Test retrieving master data (conducts, municipalities, etc.):
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirActualitzacions?pIMEI=YOUR_IMEI&pClient=088&pData=190001010101&pSeguent="
+    ```
+  </Step>
+  
+  <Step title="Submit test fine">
+    Create a test fine using `AltaMulta`. Ensure XML fields are alphabetically ordered:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         -X POST \
+         -H "Content-Type: application/xml" \
+         -d @test-fine.xml \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/AltaMulta"
+    ```
+    
+    See the [example XML](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Exemples/AltaMulta%20peticio.xml) for proper field ordering.
+  </Step>
+  
+  <Step title="Query fine">
+    Retrieve the fine you just created using `Consulta`:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/Consulta?pCdclie=088&pCdexpa=1590621"
+    ```
+  </Step>
+  
+  <Step title="Test cancellation">
+    Test canceling a fine using `AltaAnulada`:
+    
+    ```bash
+    curl --cert /path/to/cert.pem \
+         --key /path/to/key.pem \
+         "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/AltaAnulada?pCdclie=088&pCdexpa=1590621&pIMEI=YOUR_IMEI"
+    ```
+  </Step>
+</Steps>
+
+## Production Connectivity Testing
+
+<Warning>
+**Use test agent codes in production testing!** All fines with agent codes starting with `"USU"` are treated as tests and do not enter the ORGT fines system.
+</Warning>
+
+After successful pre-production testing, verify production connectivity:
+
+### Test Agent Code Requirement
+
+When submitting test fines to production, the **agent code (`Cdagen`) must start with `"USU"`**.
+
+**Valid test agent codes:**
+- `USU1`
+- `USU01`
+- `USUTEST`
+- `USU999`
+
+**Example test fine XML:**
+
+```xml Test Fine with USU Agent Code
+<MultaType xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Cdagen>USU1</Cdagen>
+  <Cdasig>S</Cdasig>
+  <Cdclie>088</Cdclie>
+  <Cdcond>C</Cdcond>
+  <Cdexpa>P090018145</Cdexpa>
+  <Cdmatr>TEST123</Cdmatr>
+  <Dtinfr>20260304</Dtinfr>
+  <Hmmult>1045</Hmmult>
+  <Immult>600</Immult>
+  <Imppag>300</Imppag>
+  <Quiden>A</Quiden>
+  <Sqcond>8430</Sqcond>
+  <!-- Other fields alphabetically ordered -->
+</MultaType>
+```
+
+### Production Test Workflow
+
+<Steps>
+  <Step title="Use production URL">
+    Switch to the production base URL:
+    ```
+    https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/
+    ```
+  </Step>
+  
+  <Step title="Set test agent code">
+    Ensure `Cdagen` field starts with `"USU"` in all test fines.
+  </Step>
+  
+  <Step title="Submit test fines">
+    POST test fines to production `AltaMulta` endpoint.
+  </Step>
+  
+  <Step title="Verify responses">
+    Check that responses return `CodiRetorn=0` indicating successful submission.
+  </Step>
+  
+  <Step title="Confirm non-processing">
+    Test fines with `"USU"` agent codes will not appear in the ORGT fines system.
+  </Step>
+</Steps>
+
+<Tip>
+Production connectivity testing with `"USU"` agent codes allows you to verify:
+- Certificate authentication works in production
+- Network connectivity to production servers
+- API endpoint availability
+- Request/response format compatibility
+</Tip>
+
+## Testing Checklist
+
+Before going live, verify you have tested:
+
+<AccordionGroup>
+  <Accordion title="Authentication & Connectivity">
+    - [ ] Certificate works in pre-production
+    - [ ] Certificate works in production
+    - [ ] All IMEIs are registered and working
+    - [ ] Network timeouts are configured appropriately
+    - [ ] SSL/TLS errors are handled gracefully
+  </Accordion>
+  
+  <Accordion title="Core Functionality">
+    - [ ] Agent login (`FerLogin`)
+    - [ ] Expedition range requests (`ObtenirRang`)
+    - [ ] Master data synchronization (`ObtenirActualitzacions`)
+    - [ ] Municipality list retrieval (`ObtenirMunicipis`)
+    - [ ] Fine creation (`AltaMulta`)
+    - [ ] Fine queries (`Consulta`)
+    - [ ] Fine cancellation (`AltaAnulada`)
+  </Accordion>
+  
+  <Accordion title="Data Validation">
+    - [ ] XML fields are alphabetically ordered in `AltaMulta`
+    - [ ] All required fields are present
+    - [ ] Text fields are in uppercase
+    - [ ] Date formats are correct (`yyyyMMdd`)
+    - [ ] Time formats are correct (`HHmm`)
+    - [ ] Municipality codes are valid 3-digit strings
+    - [ ] Expedition numbers are within assigned ranges
+  </Accordion>
+  
+  <Accordion title="Error Handling">
+    - [ ] Network errors (timeouts, connection failures)
+    - [ ] Invalid certificate errors
+    - [ ] API error responses (`CodiRetorn != 0`)
+    - [ ] Invalid IMEI errors
+    - [ ] Exhausted expedition range errors
+    - [ ] XML parsing errors
+  </Accordion>
+  
+  <Accordion title="Offline Functionality">
+    - [ ] Expedition range storage
+    - [ ] Offline fine creation
+    - [ ] Local queue management
+    - [ ] Synchronization when online
+    - [ ] Conflict resolution
+  </Accordion>
+  
+  <Accordion title="Production Readiness">
+    - [ ] Test fines submitted to production with `"USU"` agent codes
+    - [ ] Production connectivity verified
+    - [ ] Real agent codes (non-`"USU"`) ready for live use
+    - [ ] Monitoring and logging in place
+    - [ ] Error alerting configured
+  </Accordion>
+</AccordionGroup>
+
+## Common Testing Issues
+
+### Certificate Errors
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `SSL certificate verification failed` | Certificate not installed on ORGT servers | Contact ORGT to verify installation |
+| `Client certificate required` | Certificate not provided in request | Ensure certificate and key are configured in HTTP client |
+| `Handshake failure` | Mismatched certificate/key | Verify certificate matches private key |
+
+### IMEI Registration Issues
+
+```xml Error: IMEI Not Found
+<LoginResult>
+  <Retorn>
+    <CodiRetorn>-1</CodiRetorn>
+    <DescRetorn>Dispositiu no trobat</DescRetorn>
+  </Retorn>
+</LoginResult>
+```
+
+**Solution:** Confirm IMEI is registered with ORGT. Check for typos in IMEI value.
+
+### XML Field Ordering
+
+<Warning>
+The most common error in `AltaMulta` is **incorrect XML field ordering**. Fields must be alphabetically ordered:
+- First field: `Cdagen`
+- Last field: `Viapen`
+</Warning>
+
+**Incorrect (will fail):**
+```xml
+<MultaType>
+  <Cdclie>088</Cdclie>
+  <Cdagen>USU1</Cdagen>
+  <!-- WRONG ORDER -->
+</MultaType>
+```
+
+**Correct:**
+```xml
+<MultaType>
+  <Cdagen>USU1</Cdagen>
+  <Cdasig>S</Cdasig>
+  <Cdclie>088</Cdclie>
+  <!-- Alphabetical order -->
+</MultaType>
+```
+
+Refer to the [official example XML](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Exemples/AltaMulta%20peticio.xml) for the correct ordering.
+
+## Test Data
+
+### Sample Municipality Codes
+
+| Code | Municipality |
+|------|-------------|
+| `001` | Abrera |
+| `088` | Santa Coloma de Gramenet |
+| `093` | La Granada |
+| `094` | Granera |
+| `100` | L'Hospitalet de Llobregat |
+
+Use `ObtenirMunicipis` to get the complete list.
+
+### Sample Conduct Codes
+
+Obtain via `ObtenirActualitzacions` with `pData=190001010101` (from 1900-01-01) for full initial download.
+
+## Moving to Production
+
+Once testing is complete:
+
+<Steps>
+  <Step title="Document test results">
+    Keep records of successful pre-production tests and production connectivity tests.
+  </Step>
+  
+  <Step title="Remove test agent codes">
+    Ensure production code uses real agent codes, not `"USU"` prefixed codes.
+  </Step>
+  
+  <Step title="Configure production URLs">
+    Update application configuration to use production base URL.
+  </Step>
+  
+  <Step title="Monitor initial submissions">
+    Closely watch the first live fine submissions for any issues.
+  </Step>
+  
+  <Step title="Establish support contact">
+    Have ORGT support contact information ready for production issues.
+  </Step>
+</Steps>
+
+<Note>
+Thorough testing prevents production issues and ensures smooth operations for field agents. Take the time to test all endpoints and error scenarios.
+</Note>

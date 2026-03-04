@@ -1,0 +1,241 @@
+---
+title: Device Identification
+description: Understanding how devices are identified and authenticated in the Alta Multes API
+---
+
+## Overview
+
+The Alta Multes API uses a flexible device identification system based on IMEI codes to authenticate and authorize client applications. While originally designed for PDAs, the system has evolved to support multiple device types while maintaining backwards compatibility.
+
+## The IMEI System
+
+Every device or application that connects to the Alta Multes API must be identified by a unique **IMEI** (International Mobile Equipment Identity) code. This IMEI serves as:
+
+- A unique identifier for the device/application
+- An association mechanism linking the device to a specific municipality (Ajuntament)
+- An authentication credential for API access
+
+<Info>
+Each IMEI is registered in the ORGT database and is associated with exactly one municipality. This ensures that devices can only create fines for their assigned municipality.
+</Info>
+
+## Device Types
+
+The API supports three primary device deployment scenarios:
+
+### Physical PDAs
+
+The original use case for which the service was designed.
+
+**How it works:**
+- Uses the actual hardware IMEI from the PDA device
+- Each PDA is registered with ORGT and assigned to a municipality
+- The device can work offline using pre-allocated expedition number ranges
+
+**Example:**
+```
+IMEI: 353947020131525
+Associated Municipality: 088 (Santa Coloma)
+Agent: 220
+```
+
+### Mobile Applications
+
+Smartphone apps that function as "virtual PDAs."
+
+**How it works:**
+- ORGT assigns a unique code that acts as a virtual IMEI
+- Each mobile device receives its own unique identifier
+- If a single device needs to work with multiple municipalities, it must use a different IMEI for each one
+
+<Note>
+The term "IMEI" is retained for consistency, but for mobile apps it's actually an ORGT-assigned unique code, not the device's physical IMEI.
+</Note>
+
+### Centralized Web Applications
+
+Web-based systems that manage fines centrally.
+
+**How it works:**
+- Uses a standardized naming convention: `empresa-codigo_ajuntament`
+- Each municipality requires a separate IMEI, even within the same application
+- The company name and municipality code are combined to ensure uniqueness
+
+**Example:**
+```
+Company: Multa S.A.
+Municipality: 001 (Abrera)
+IMEI: MULTA-001
+```
+
+**Multi-municipality scenario:**
+```
+IMEI for Abrera: MULTA-001
+IMEI for Hospitalet: MULTA-100
+IMEI for Santa Coloma: MULTA-088
+```
+
+## IMEI Registration Process
+
+Before using the API, you must register your devices with ORGT:
+
+1. **Submit Adhesion Form** - Complete and sign the official adhesion form
+2. **Provide Certificate** - Submit the public key of your authentication certificate
+3. **Register IMEIs** - Communicate the list of IMEIs you plan to use
+4. **Activate Devices** - ORGT adds the IMEIs to their database
+5. **Add New Devices** - Each time you add a device, notify ORGT to register the new IMEI
+
+<Info>
+The same SSL certificate can be used for all your devices. However, each device must have its own unique IMEI registered in the ORGT system.
+</Info>
+
+## Authentication Flow
+
+Devices authenticate using a combination of certificate-based authentication and agent login:
+
+### 1. Certificate Authentication (Transport Level)
+
+All API requests require mutual TLS authentication:
+
+```
+Client Certificate: Your organization's certificate
+Server Certificate: ORGT's certificate
+Protocol: HTTPS with mutual authentication
+```
+
+### 2. Agent Login (Application Level)
+
+After establishing a secure connection, agents must log in:
+
+**Request:**
+```
+GET /FerLogin?CodiAgent=220&Password=SECRET&IMEI=353947020131525
+```
+
+**Response:**
+```xml
+<LoginResult>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+  <Client>088</Client>
+  <DiaiHora>04/03/2026 14:30:00</DiaiHora>
+  <Canviar>false</Canviar>
+</LoginResult>
+```
+
+**Key validations:**
+- The IMEI must exist in the ORGT database
+- The agent must belong to the municipality associated with the IMEI
+- The password must match the agent's credentials
+
+## Device-Municipality Relationship
+
+```
+┌─────────────────┐
+│  IMEI           │
+│  353947020131525│
+└────────┬────────┘
+         │
+         │ Associated with
+         │
+         ▼
+┌─────────────────┐
+│  Municipality   │
+│  088 (Santa     │
+│  Coloma)        │
+└────────┬────────┘
+         │
+         │ Contains
+         │
+         ▼
+┌─────────────────┐
+│  Agents         │
+│  - 220          │
+│  - 501          │
+│  - ...          │
+└─────────────────┘
+```
+
+<Note>
+This one-to-one relationship between IMEI and municipality ensures data isolation and prevents unauthorized cross-municipality access.
+</Note>
+
+## Offline Operation
+
+One of the key advantages of the IMEI system is support for offline work:
+
+1. **Range Allocation** - Each IMEI can request expedition number ranges
+2. **Local Storage** - Master data is synchronized to the device
+3. **Offline Creation** - Fines are created using local ranges
+4. **Synchronization** - When online, fines are uploaded to ORGT
+
+**Example range request:**
+```
+GET /ObtenirRang?pImei=353947020131525&pEstat1=1&pEstat2=1
+```
+
+**Response:**
+```xml
+<Rang>
+  <Minrang1>1590621</Minrang1>
+  <MaxRang1>1590630</MaxRang1>
+  <MinRang2>1590631</MinRang2>
+  <MaxRang2>1590640</MaxRang2>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+  </Retorn>
+</Rang>
+```
+
+## Testing and Production
+
+IMEI behavior differs between environments:
+
+### Pre-production Testing
+- Register IMEIs specifically for testing
+- Same authentication requirements as production
+- URL: `https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/`
+
+### Production Testing
+- Use production IMEIs
+- Create fines with agent codes starting with "USU" (e.g., "USU1")
+- These fines are marked as tests and excluded from the system
+
+### Production
+- Use registered production IMEIs
+- Use real agent codes
+- URL: `https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/`
+
+## Common Error Codes
+
+When working with device identification, you may encounter:
+
+| Code | Meaning |
+|------|----------|
+| `-1` | IMEI not found or invalid |
+| `-2` | Agent doesn't belong to the IMEI's municipality |
+| `-3` | Incorrect password |
+| `-4` | Database error updating credentials |
+| `-9000` | Uncontrolled exception |
+
+## Best Practices
+
+1. **Unique Naming** - Use descriptive, unique names for web application IMEIs
+2. **Document Assignments** - Maintain an internal registry of IMEI-to-municipality mappings
+3. **Secure Storage** - Store IMEI values securely; they are authentication credentials
+4. **Test Thoroughly** - Always test in pre-production before using production IMEIs
+5. **Monitor Usage** - Track which agents use which IMEIs for audit purposes
+6. **Update ORGT** - Promptly notify ORGT when adding or removing devices
+
+## Security Considerations
+
+<Warning>
+IMEIs are security credentials. Treat them with the same care as passwords or API keys. Never expose them in client-side code or public repositories.
+</Warning>
+
+- **Certificate Required** - All API access requires valid SSL certificates
+- **IMEI Pre-registration** - IMEIs must be registered before use
+- **Agent Validation** - Agents must belong to the device's municipality
+- **Audit Trail** - All actions are logged with IMEI and agent information

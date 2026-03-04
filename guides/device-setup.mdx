@@ -1,0 +1,223 @@
+---
+title: 'Device Setup'
+description: 'IMEI registration and device types for the Alta Multes API'
+---
+
+## Overview
+
+Every device that accesses the Alta Multes API must be identified by a unique **IMEI** (International Mobile Equipment Identity) code. Each IMEI is associated with a single municipality and must be registered with ORGT before use.
+
+## Device Types
+
+The API supports three types of devices:
+
+### 1. Physical PDA Devices
+
+Traditional PDA hardware devices use their actual IMEI number for identification.
+
+**Characteristics:**
+- Uses the device's real 15-digit IMEI
+- Associated with one municipality
+- Designed for offline operation with expedition number ranges
+
+### 2. Mobile Applications (Virtual PDAs)
+
+Mobile phone applications are treated as "virtual PDAs" with ORGT-assigned identifiers.
+
+**Characteristics:**
+- ORGT assigns a unique code (referred to as IMEI)
+- One code per municipality per device
+- If a phone works with multiple municipalities, it needs a different IMEI for each
+
+**Example:**
+A mobile app used by both Barcelona and Hospitalet would need two separate IMEI codes from ORGT:
+- `MOBILE_APP_BCN_001` for Barcelona
+- `MOBILE_APP_HOS_001` for Hospitalet
+
+### 3. Centralized Web Applications
+
+Web-based applications follow a specific naming convention for IMEI codes.
+
+**IMEI Format:**
+```
+{company_name}-{municipality_code}
+```
+
+**Examples:**
+- `MULTA-001` - Multa S.A. managing Abrera (code 001)
+- `MULTA-088` - Multa S.A. managing Santa Coloma de Gramenet (code 088)
+- `TRAFICO-100` - Tràfico company managing L'Hospitalet de Llobregat (code 100)
+
+**Characteristics:**
+- One IMEI per municipality managed
+- Company name and municipality code separated by hyphen
+- Uses ORGT municipality codes (3 digits)
+
+## IMEI Registration Process
+
+<Steps>
+  <Step title="Complete adhesion process">
+    First, complete the [adhesion process](/guides/authentication#certificate-requirements) and obtain your certificate.
+  </Step>
+  
+  <Step title="Identify your devices">
+    Determine all devices that will access the API:
+    - For PDAs: Collect actual IMEI numbers
+    - For mobile apps: Decide on unique identifiers for each device-municipality pair
+    - For web apps: Use the `{company}-{municipality_code}` format
+  </Step>
+  
+  <Step title="Submit to ORGT">
+    Communicate all IMEI codes to ORGT for registration in their database.
+  </Step>
+  
+  <Step title="Wait for activation">
+    ORGT will register the devices. Once registered, you can begin using them.
+  </Step>
+  
+  <Step title="Add new devices as needed">
+    Each time you add a new device, communicate the new IMEI to ORGT for registration.
+  </Step>
+</Steps>
+
+<Warning>
+Devices cannot access the API until their IMEI is registered in the ORGT database. Plan ahead for new device deployments.
+</Warning>
+
+## Device-Municipality Association
+
+Each IMEI is permanently associated with **one municipality**. This association:
+
+- Is set during registration
+- Cannot be changed (you need a new IMEI to work with a different municipality)
+- Determines which expedition number ranges are available
+- Validates which municipality codes can be used in API calls
+
+### Obtaining Municipality Codes
+
+Use the `ObtenirMunicipis` endpoint to get the complete list of municipalities with their ORGT codes:
+
+```bash Request
+GET https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirMunicipis
+```
+
+```xml Response Example
+<ArrayOfActualitzacioMunicipi>
+  <ActualitzacioMunicipi>
+    <Cdclie>093</Cdclie>
+    <cine10>0809450006</cine10>
+    <dsnom1>AJUNTAMENT DE</dsnom1>
+    <dsnom2> LA GRANADA</dsnom2>
+    <dsnomc>LA GRANADA</dsnomc>
+  </ActualitzacioMunicipi>
+  <ActualitzacioMunicipi>
+    <Cdclie>088</Cdclie>
+    <cine10>0819380001</cine10>
+    <dsnom1>AJUNTAMENT DE</dsnom1>
+    <dsnom2> SANTA COLOMA</dsnom2>
+    <dsnomc>SANTA COLOMA DE GRAMENET</dsnomc>
+  </ActualitzacioMunicipi>
+</ArrayOfActualitzacioMunicipi>
+```
+
+<Note>
+- `Cdclie`: ORGT municipality code (3 digits, used in API calls)
+- `cine10`: INE municipality code (10 digits)
+- Municipality codes are strings (e.g., "088", "100") not integers
+</Note>
+
+## Agent Registration
+
+Previously, agents (denunciation officers) needed to be pre-registered. This is **no longer required**.
+
+<Tip>
+You do not need to communicate new agents to ORGT, as long as you specify the `quiden` field when creating a fine. This field indicates who made the denunciation:
+- `A` - Agent (Agente)
+- `V` - Vigilant (Vigilante)
+- `P` - Private individual (Particular)
+- `X` - Other type of person
+</Tip>
+
+## Device Login
+
+Before using a device, agents must log in using the `FerLogin` endpoint:
+
+```bash Request
+GET https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/FerLogin?
+  CodiAgent=501&Password=mypass123&IMEI=353947020131525
+```
+
+```xml Response
+<LoginResult>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+  <Client>088</Client>
+  <DiaiHora>04/03/2026 10:30:45</DiaiHora>
+  <Canviar>false</Canviar>
+</LoginResult>
+```
+
+**Return Codes:**
+- `0` - Success
+- `-1` - Device not found
+- `-2` - Agent doesn't belong to the device's municipality
+- `-3` - Incorrect password
+- `-4` - Database error changing password
+- `-9000` - Other error
+
+## Best Practices
+
+### IMEI Management
+
+<CardGroup cols={2}>
+  <Card title="Keep an Inventory" icon="list">
+    Maintain a spreadsheet of all IMEIs, their type, and associated municipalities
+  </Card>
+  
+  <Card title="Use Descriptive Names" icon="tag">
+    For virtual devices, use clear naming: `MYAPP-MUNICIPALITY-DEVICENUM`
+  </Card>
+  
+  <Card title="Plan for Scale" icon="chart-line">
+    Request IMEI ranges if you anticipate deploying many devices
+  </Card>
+  
+  <Card title="Test Before Deploy" icon="flask">
+    Verify IMEI registration in pre-production before deploying to field agents
+  </Card>
+</CardGroup>
+
+### Multi-Municipality Support
+
+If your application serves multiple municipalities:
+
+```javascript Example: Multi-Municipality Configuration
+const deviceConfig = {
+  municipalities: [
+    {
+      code: '088',
+      name: 'Santa Coloma de Gramenet',
+      imei: 'MYAPP-088'
+    },
+    {
+      code: '100',
+      name: 'L\'Hospitalet de Llobregat',
+      imei: 'MYAPP-100'
+    }
+  ]
+};
+
+// Use the appropriate IMEI based on selected municipality
+function getImeiForMunicipality(municipalityCode) {
+  const config = deviceConfig.municipalities.find(
+    m => m.code === municipalityCode
+  );
+  return config?.imei;
+}
+```
+
+<Warning>
+Never share IMEI codes across municipalities. Each municipality requires its own registered IMEI.
+</Warning>

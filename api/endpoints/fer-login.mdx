@@ -1,0 +1,97 @@
+---
+title: 'FerLogin'
+description: 'Authenticate an agent and their device to the system'
+api: 'GET /FerLogin'
+---
+
+## Overview
+
+The FerLogin endpoint authenticates an agent and their device to the system. The agent must belong to the municipality associated with the device. This is the recommended endpoint for authentication instead of the deprecated ValidarLogin.
+
+## Authentication
+
+This endpoint performs authentication and does not require prior authentication. It validates the agent credentials (CodiAgent and Password) along with the device identifier (IMEI).
+
+## Query Parameters
+
+<ParamField query="CodiAgent" type="string" required>
+  Agent code: maximum 5 alphanumeric positions
+</ParamField>
+
+<ParamField query="Password" type="string" required>
+  Password: maximum 8 alphanumeric positions
+</ParamField>
+
+<ParamField query="IMEI" type="string" required>
+  Device identifier: maximum 15 alphanumeric positions
+</ParamField>
+
+## Response Schema
+
+The endpoint returns a `LoginResult` object containing:
+
+<ResponseField name="Retorn" type="object">
+  Return object with operation result
+  
+  <ResponseField name="CodiRetorn" type="integer">
+    Return code indicating the operation result
+  </ResponseField>
+  
+  <ResponseField name="DescRetorn" type="string">
+    Return description with additional details
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="Client" type="string">
+  Municipality code according to ORGT codification, obtained from the device identifier. A device is associated with a single municipality.
+</ResponseField>
+
+<ResponseField name="DiaiHora" type="string">
+  Current server date and time in format dd/MM/yyyy HH:mm:ss
+</ResponseField>
+
+<ResponseField name="Canviar" type="boolean">
+  Indicates whether the password needs to be changed (True/False)
+</ResponseField>
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success - authentication successful |
+| -1 | Device not found or password not set |
+| -2 | Agent does not belong to the device's municipality |
+| -3 | Current password is incorrect |
+| -4 | Password could not be modified due to database error |
+| -9000 | General error different from the above |
+| Other negative | Database error |
+
+## Usage Examples
+
+### cURL
+
+```bash
+curl -X GET "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/FerLogin?CodiAgent=501&Password=mypass123&IMEI=353947020131525" \
+  -H "Accept: application/xml"
+```
+
+### Example Response
+
+```xml
+<LoginResult xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <Canviar>false</Canviar>
+  <Client>088</Client>
+  <DiaiHora>04/03/2026 10:30:15</DiaiHora>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+</LoginResult>
+```
+
+## Notes
+
+- This endpoint is recommended over the deprecated `ValidarLogin` endpoint
+- The device identifier (IMEI) is uniquely associated with a municipality
+- After successful authentication, use the returned `Client` code for subsequent operations
+- If `Canviar` is true, the agent should be prompted to change their password using the `/CanviPassword` endpoint

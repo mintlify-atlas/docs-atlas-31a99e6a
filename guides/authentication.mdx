@@ -1,0 +1,144 @@
+---
+title: 'Authentication'
+description: 'Certificate-based HTTPS authentication for the Alta Multes API'
+---
+
+## Overview
+
+The Alta Multes API uses **mutual TLS authentication** with client and server certificates. Both the client and server must present valid certificates to establish a secure connection.
+
+<Note>
+The same certificate can be used for both pre-production (testing) and production environments.
+</Note>
+
+## Certificate Requirements
+
+### Obtaining a Certificate
+
+Before accessing the API, you must:
+
+<Steps>
+  <Step title="Download the adhesion form">
+    Download the [adhesion form](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Formulari%20d'adhesi%C3%B3.pdf) from the ORGT repository.
+  </Step>
+  
+  <Step title="Complete the form">
+    Fill out all required fields in the adhesion form with your organization's details.
+  </Step>
+  
+  <Step title="Get mayoral signature">
+    The form must be signed by the Mayor (Alcalde/ssa) of the municipality.
+  </Step>
+  
+  <Step title="Submit via EACAT">
+    Send the signed form to ORGT through the EACAT platform.
+  </Step>
+  
+  <Step title="Provide certificate public key">
+    Include the public key of your certificate in the adhesion process. ORGT must install this public key on their servers before you can access the API.
+  </Step>
+</Steps>
+
+<Warning>
+The ORGT servers **must** have your certificate's public key installed before you can make API calls. Plan for processing time in your implementation timeline.
+</Warning>
+
+## Accessing API Endpoints
+
+### Base URLs
+
+The API is available at two environments:
+
+| Environment | Base URL |
+|------------|----------|
+| **Production** | `https://pda.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/` |
+| **Pre-production** | `https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/` |
+
+### Making Authenticated Requests
+
+Every request must include your client certificate. The endpoint is appended to the base URL:
+
+```bash Example: ObtenirRang Endpoint
+https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=123&pEstat1=1&pEstat2=1
+```
+
+### Certificate Setup Examples
+
+<CodeGroup>
+
+```bash cURL
+curl --cert /path/to/client-cert.pem \
+     --key /path/to/client-key.pem \
+     --cacert /path/to/ca-cert.pem \
+     "https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang?pImei=123&pEstat1=1&pEstat2=1"
+```
+
+```python Python (requests)
+import requests
+
+response = requests.get(
+    'https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang',
+    params={'pImei': '123', 'pEstat1': 1, 'pEstat2': 1},
+    cert=('/path/to/client-cert.pem', '/path/to/client-key.pem'),
+    verify='/path/to/ca-cert.pem'
+)
+```
+
+```javascript Node.js (axios)
+const axios = require('axios');
+const https = require('https');
+const fs = require('fs');
+
+const agent = new https.Agent({
+  cert: fs.readFileSync('/path/to/client-cert.pem'),
+  key: fs.readFileSync('/path/to/client-key.pem'),
+  ca: fs.readFileSync('/path/to/ca-cert.pem')
+});
+
+const response = await axios.get(
+  'https://pdaprv16.orgt.diba.cat/RestMultesPDA/svcMultesPDA.svc/rest/ObtenirRang',
+  {
+    params: { pImei: '123', pEstat1: 1, pEstat2: 1 },
+    httpsAgent: agent
+  }
+);
+```
+
+</CodeGroup>
+
+## Accessing API Documentation
+
+Your certificate is also required to access the API specification resources:
+
+- **Swagger/OpenAPI**: Available in the [GitHub repository](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/swagger%20WcfMultesPDA.json)
+- **WSDL**: https://pda.orgt.diba.cat/WcfMultesPDA/svcMultesPDA.svc?singleWsdl (certificate required, or cancel the prompt)
+- **XSD Schema**: https://pdaprv16.orgt.diba.cat/RestMultesPDA/schema/svcMultesPDA.xsd (certificate required)
+
+<Tip>
+You can cancel the certificate request when accessing the WSDL to view field names and descriptions, which are the same for both SOAP and REST versions.
+</Tip>
+
+## Troubleshooting
+
+### Common Authentication Issues
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| SSL handshake failed | Certificate not installed on ORGT servers | Contact ORGT to verify your public key is installed |
+| Certificate verification failed | Wrong CA certificate | Ensure you're using the correct CA certificate provided by ORGT |
+| Connection refused | Certificate/key mismatch | Verify your certificate and private key match |
+| 403 Forbidden | Certificate not authorized | Confirm your certificate was submitted in the adhesion process |
+
+## Security Best Practices
+
+<Warning>
+**Protect your private key:**
+- Never commit private keys to version control
+- Store keys in secure, encrypted storage
+- Restrict file permissions (e.g., `chmod 600` on Unix systems)
+- Rotate certificates before expiration
+</Warning>
+
+<Tip>
+Test your certificate setup in the pre-production environment before attempting to connect to production.
+</Tip>

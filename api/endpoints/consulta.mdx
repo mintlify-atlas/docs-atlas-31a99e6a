@@ -1,0 +1,335 @@
+---
+title: 'GET /Consulta'
+description: 'Query a traffic violation by municipality and expedition number'
+---
+
+## Overview
+
+The Consulta endpoint allows you to retrieve detailed information about a specific traffic violation. The violation is uniquely identified by the municipality code and the expedition number within that municipality.
+
+## Endpoint
+
+```
+GET /Consulta
+```
+
+## Authentication
+
+This endpoint requires authentication.
+
+## Content Type
+
+- **Consumes:** `application/json`, `application/xml`
+- **Produces:** `application/xml`
+
+## Query Parameters
+
+<ParamField query="pCdclie" type="string" required>
+  Municipality code (3-digit string). Example: '100' = Hospitalet de Llobregat. Use `ObtenirMunicipis()` to see all valid values.
+</ParamField>
+
+<ParamField query="pCdexpa" type="string" required>
+  Expedition number within the municipality. Together with pCdclie, this uniquely identifies the violation.
+</ParamField>
+
+## Response
+
+### Success Response (200)
+
+Returns a `MultaExtended` object containing all violation details and additional metadata.
+
+<ResponseField name="Cdagen" type="string">
+  Agent code
+</ResponseField>
+
+<ResponseField name="Cdasig" type="string">
+  Assignment code
+</ResponseField>
+
+<ResponseField name="Cdclie" type="string">
+  Municipality code
+</ResponseField>
+
+<ResponseField name="Cdcond" type="string">
+  Conduct code
+</ResponseField>
+
+<ResponseField name="Cdexpa" type="string">
+  Expedition number
+</ResponseField>
+
+<ResponseField name="Cdiden" type="string">
+  Identification code
+</ResponseField>
+
+<ResponseField name="Cdmatr" type="string">
+  License plate number
+</ResponseField>
+
+<ResponseField name="Cdmunc" type="string">
+  Municipality code where violation occurred
+</ResponseField>
+
+<ResponseField name="Cdposc" type="string">
+  Postal code
+</ResponseField>
+
+<ResponseField name="Cdrefe" type="string">
+  Reference code
+</ResponseField>
+
+<ResponseField name="Codvia" type="string">
+  Street type code
+</ResponseField>
+
+<ResponseField name="Color" type="string">
+  Vehicle color
+</ResponseField>
+
+<ResponseField name="Desamp1" type="string">
+  Additional description field 1
+</ResponseField>
+
+<ResponseField name="Desamp2" type="string">
+  Additional description field 2
+</ResponseField>
+
+<ResponseField name="Desamp3" type="string">
+  Additional description field 3
+</ResponseField>
+
+<ResponseField name="Desamp4" type="string">
+  Additional description field 4
+</ResponseField>
+
+<ResponseField name="Desamp5" type="string">
+  Additional description field 5
+</ResponseField>
+
+<ResponseField name="Dsadrc" type="string">
+  Street address
+</ResponseField>
+
+<ResponseField name="Dslloc" type="string">
+  Location description
+</ResponseField>
+
+<ResponseField name="Dsmunc" type="string">
+  Municipality name
+</ResponseField>
+
+<ResponseField name="Dspais" type="string">
+  Country
+</ResponseField>
+
+<ResponseField name="Dsprov" type="string">
+  Province
+</ResponseField>
+
+<ResponseField name="Dtcoca" type="string">
+  Notification date
+</ResponseField>
+
+<ResponseField name="Dtinfr" type="string">
+  Violation date (format: ddMMyyyy)
+</ResponseField>
+
+<ResponseField name="Dtmenor" type="string">
+  Minor date
+</ResponseField>
+
+<ResponseField name="Foto" type="byte[]">
+  Photo in Base64 encoded format
+</ResponseField>
+
+<ResponseField name="Hmmult" type="string">
+  Violation time (HHmm format)
+</ResponseField>
+
+<ResponseField name="Identi" type="string">
+  Identity document (DNI/NIE)
+</ResponseField>
+
+<ResponseField name="Idepda" type="string">
+  PDA device identifier
+</ResponseField>
+
+<ResponseField name="Immult" type="string">
+  Violation amount
+</ResponseField>
+
+<ResponseField name="Imppag" type="string">
+  Payment amount (reduced if paid early)
+</ResponseField>
+
+<ResponseField name="Marca" type="string">
+  Vehicle brand
+</ResponseField>
+
+<ResponseField name="Model" type="string">
+  Vehicle model
+</ResponseField>
+
+<ResponseField name="Nmmobi" type="string">
+  Mobile number
+</ResponseField>
+
+<ResponseField name="Nom" type="string">
+  Name
+</ResponseField>
+
+<ResponseField name="Numvia" type="string">
+  Street number
+</ResponseField>
+
+<ResponseField name="Orivia" type="string">
+  Street orientation
+</ResponseField>
+
+<ResponseField name="Quiden" type="string">
+  Identification type
+</ResponseField>
+
+<ResponseField name="Resident" type="string">
+  Resident flag
+</ResponseField>
+
+<ResponseField name="Retcar" type="string">
+  Card withdrawal flag
+</ResponseField>
+
+<ResponseField name="Snfoto" type="string">
+  Photo flag (S/N)
+</ResponseField>
+
+<ResponseField name="Snmeno" type="string">
+  Minor flag (S/N)
+</ResponseField>
+
+<ResponseField name="Snsign" type="string">
+  Signature flag (S/N)
+</ResponseField>
+
+<ResponseField name="Sqcond" type="string">
+  Conduct sequence number
+</ResponseField>
+
+<ResponseField name="Tpmatr" type="string">
+  License plate type
+</ResponseField>
+
+<ResponseField name="Tpvehi" type="string">
+  Vehicle type
+</ResponseField>
+
+<ResponseField name="Viapen" type="string">
+  Penalty route flag
+</ResponseField>
+
+<ResponseField name="Anulada" type="boolean">
+  Indicates if the violation has been cancelled
+</ResponseField>
+
+<ResponseField name="CodiBarres" type="string">
+  Barcode for payment
+</ResponseField>
+
+<ResponseField name="DataPagament" type="datetime">
+  Payment date (format: yyyy-MM-ddTHH:mm:ss)
+</ResponseField>
+
+<ResponseField name="cdesta" type="string">
+  Status code
+</ResponseField>
+
+<ResponseField name="dniden" type="string">
+  DNI/NIE identification
+</ResponseField>
+
+<ResponseField name="dserror" type="string">
+  Error description (if any)
+</ResponseField>
+
+## Examples
+
+### Request Example
+
+```bash
+GET /Consulta?pCdclie=088&pCdexpa=0880000001
+```
+
+### Success Response Example
+
+```xml
+<MultaExtended xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <Cdagen>501</Cdagen>
+  <Cdasig>A</Cdasig>
+  <Cdclie>088</Cdclie>
+  <Cdcond>D</Cdcond>
+  <Cdexpa>0880000001</Cdexpa>
+  <Cdiden>0</Cdiden>
+  <Cdmatr>1234ABC</Cdmatr>
+  <Cdmunc>245</Cdmunc>
+  <Cdposc>08923</Cdposc>
+  <Cdrefe/>
+  <Codvia>CR</Codvia>
+  <Color/>
+  <Desamp1/>
+  <Desamp2/>
+  <Desamp3/>
+  <Desamp4/>
+  <Desamp5/>
+  <Dsadrc/>
+  <Dslloc>CARRER ARAGÓ</Dslloc>
+  <Dsmunc>SANTA COLOMA</Dsmunc>
+  <Dspais>ESPAÑA</Dspais>
+  <Dsprov>BARCELONA</Dsprov>
+  <Dtcoca/>
+  <Dtinfr>28072018</Dtinfr>
+  <Dtmenor/>
+  <Foto>BytesCodificatsEnBase64,exemple./9j/YZVDELmjozSniHHQ//2Q2A==</Foto>
+  <Hmmult>1106</Hmmult>
+  <Identi/>
+  <Idepda/>
+  <Immult>8000</Immult>
+  <Imppag>0</Imppag>
+  <Marca>SEAT</Marca>
+  <Model>MALAGA</Model>
+  <Nmmobi>123456</Nmmobi>
+  <Nom/>
+  <Numvia>0</Numvia>
+  <Orivia>O</Orivia>
+  <Quiden i:nil="true"/>
+  <Resident/>
+  <Retcar>N</Retcar>
+  <Snfoto>N</Snfoto>
+  <Snmeno>N</Snmeno>
+  <Snsign>N</Snsign>
+  <Sqcond>3888</Sqcond>
+  <Tpmatr>1</Tpmatr>
+  <Tpvehi/>
+  <Viapen>N</Viapen>
+  <Anulada>false</Anulada>
+  <CodiBarres/>
+  <DataPagament>0001-01-01T00:00:00</DataPagament>
+  <cdesta>P</cdesta>
+  <dniden i:nil="True"/>
+  <dserror i:nil="True"/>
+</MultaExtended>
+```
+
+## Important Notes
+
+<Note>
+- Both pCdclie and pCdexpa are required to uniquely identify a violation
+- The municipality code must be a 3-digit string (e.g., '088', not '88')
+- Photos are returned in Base64 encoded format
+- The response includes extended fields not present in the basic MultaType (Anulada, CodiBarres, DataPagament, cdesta, dniden, dserror)
+- Null fields are represented with `i:nil="true"` or `i:nil="True"` attributes
+</Note>
+
+## Related Endpoints
+
+- [POST /AltaMulta](/api/endpoints/alta-multa) - Create a new violation
+- [GET /AltaAnulada](/api/endpoints/alta-anulada) - Cancel a violation
+- GET /ObtenirMunicipis - Get list of valid municipality codes

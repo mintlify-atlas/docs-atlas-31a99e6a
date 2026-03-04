@@ -1,0 +1,424 @@
+---
+title: Expedition Numbers
+description: How expedition number ranges work and enable offline fine creation
+---
+
+## Overview
+
+Expedition numbers are unique identifiers assigned to each fine within a municipality. The Alta Multes API uses a sophisticated range allocation system that allows devices to work offline while ensuring no number conflicts occur.
+
+## Fine Identification
+
+Each fine in the ORGT system is uniquely identified by the combination of:
+
+```
+Municipality Code + Expedition Number = Unique Fine ID
+```
+
+**Example:**
+```
+Municipality: 088 (Santa Coloma)
+Expedition: P090018145
+Full ID: 088-P090018145
+```
+
+This two-part key ensures:
+- Fines are unique within the entire ORGT system
+- Different municipalities can use the same expedition numbers
+- Simple lookups using municipality and expedition number
+
+<Info>
+Expedition numbers are municipality-specific. Municipality 088 and municipality 100 can both have expedition number "0001" without conflict.
+</Info>
+
+## Why Ranges Matter
+
+The range system solves a critical challenge: **offline operation**.
+
+### The Problem
+
+Without ranges:
+- Devices would need constant connectivity to get the next available number
+- Multiple devices would risk using the same number
+- Network failures would prevent fine creation
+
+### The Solution
+
+With ranges:
+- Each device pre-allocates a block of expedition numbers
+- Devices work completely offline until their range is exhausted
+- No conflicts occur because ranges are exclusive to each device
+
+## Range Types
+
+The system provides two types of ranges per device:
+
+### Range 1 (Primary Range)
+
+The main working range for regular use.
+
+```xml
+<Minrang1>1590621</Minrang1>
+<MaxRang1>1590630</MaxRang1>
+```
+
+**Characteristics:**
+- Typically 10-50 numbers
+- Used for day-to-day operations
+- Requested with `pEstat1=1`
+
+### Range 2 (Secondary Range)
+
+A backup range for extended offline periods or high-volume scenarios.
+
+```xml
+<MinRang2>1590631</MinRang2>
+<MaxRang2>1590640</MaxRang2>
+```
+
+**Characteristics:**
+- Activated after Range 1 is exhausted
+- Provides continuity without requiring immediate connectivity
+- Requested with `pEstat2=1`
+
+## Requesting Ranges
+
+Devices request new ranges using the `ObtenirRang` endpoint.
+
+### Request Parameters
+
+```
+GET /ObtenirRang?pImei={IMEI}&pEstat1={0|1}&pEstat2={0|1}
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pImei` | string | Device identifier (max 15 chars) |
+| `pEstat1` | integer | `1` to request primary range, `0` to skip |
+| `pEstat2` | integer | `1` to request secondary range, `0` to skip |
+
+### Response Format
+
+```xml
+<Rang xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Minrang1>1590621</Minrang1>
+  <MaxRang1>1590630</MaxRang1>
+  <MinRang2>1590631</MinRang2>
+  <MaxRang2>1590640</MaxRang2>
+  <Retorn>
+    <CodiRetorn>0</CodiRetorn>
+    <DescRetorn/>
+  </Retorn>
+</Rang>
+```
+
+### Request Strategies
+
+**Request both ranges at startup:**
+```
+/ObtenirRang?pImei=353947020131525&pEstat1=1&pEstat2=1
+```
+
+**Request only primary range:**
+```
+/ObtenirRang?pImei=353947020131525&pEstat1=1&pEstat2=0
+```
+
+**Request only secondary range (rare):**
+```
+/ObtenirRang?pImei=353947020131525&pEstat1=0&pEstat2=1
+```
+
+## Using Expedition Numbers
+
+When creating a fine, the expedition number must be within your allocated ranges.
+
+### Fine Creation Example
+
+```xml
+<MultaType xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Cdagen>220</Cdagen>
+  <Cdclie>088</Cdclie>
+  <Cdexpa>1590621</Cdexpa>  <!-- Must be within range -->
+  <Dtinfr>20260304</Dtinfr>
+  <Cdmatr>1234ABC</Cdmatr>
+  ...
+</MultaType>
+```
+
+### Validation
+
+The API validates that:
+1. The expedition number is within a range previously allocated to this IMEI
+2. The number hasn't been used before
+3. The municipality code matches the IMEI's assigned municipality
+
+## Range Management Workflow
+
+```
+┌──────────────┐
+│  Device      │
+│  Startup     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Request Ranges      │
+│  Range 1: 100-109    │
+│  Range 2: 110-119    │
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Create Fines        │
+│  Offline             │
+│  Use: 100,101,102... │
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Range 1 Exhausted   │
+│  (Used up to 109)    │
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Switch to Range 2   │
+│  Use: 110,111,112... │
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Connect & Request   │
+│  New Ranges          │
+└──────────────────────┘
+```
+
+## Format and Constraints
+
+### Expedition Number Format
+
+Expedition numbers can have various formats:
+
+**Numeric:**
+```
+0880000001
+1590621
+```
+
+**Alphanumeric:**
+```
+P090018145
+```
+
+<Note>
+While ranges are typically numeric sequences, the expedition number field itself accepts alphanumeric values. Check your municipality's specific format requirements.
+</Note>
+
+### Field Constraints
+
+- **Field name:** `Cdexpa`
+- **Type:** String
+- **Required:** Yes
+- **Case:** Uppercase (all text data must be uppercase)
+- **Uniqueness:** Must be unique within the municipality
+
+## Error Handling
+
+### Range Request Errors
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `-1` | Application error | Check IMEI is valid and registered |
+| `-9000` | Uncontrolled exception | Contact ORGT support |
+
+### Fine Creation Errors
+
+If you use an invalid expedition number:
+
+```xml
+<tRetorn>
+  <CodiRetorn>1</CodiRetorn>
+  <DescRetorn>Número d'expedient fora del rang assignat</DescRetorn>
+</tRetorn>
+```
+
+**Common causes:**
+- Using a number outside your allocated ranges
+- Reusing a number that was already submitted
+- Using a number before requesting ranges
+
+## Best Practices
+
+### 1. Request Ranges Proactively
+
+```javascript
+// Good: Request when 20% remain
+if (remainingNumbers <= totalRange * 0.2) {
+  requestNewRanges();
+}
+
+// Bad: Wait until completely exhausted
+if (remainingNumbers === 0) {
+  requestNewRanges(); // Too late!
+}
+```
+
+### 2. Use Sequential Numbers
+
+Always use expedition numbers sequentially:
+
+```javascript
+// Good
+let current = minRange1;
+current++; // 1590621, 1590622, 1590623...
+
+// Bad - Wastes numbers
+let current = minRange1 + Math.random() * (maxRange1 - minRange1);
+```
+
+### 3. Track Range Usage
+
+Maintain local state:
+
+```javascript
+const rangeState = {
+  range1: {
+    min: 1590621,
+    max: 1590630,
+    current: 1590625,
+    remaining: 5
+  },
+  range2: {
+    min: 1590631,
+    max: 1590640,
+    current: 1590631,
+    remaining: 10
+  }
+};
+```
+
+### 4. Handle Range Exhaustion
+
+```javascript
+function getNextExpeditionNumber() {
+  // Try primary range first
+  if (range1.current <= range1.max) {
+    return range1.current++;
+  }
+  
+  // Fall back to secondary range
+  if (range2.current <= range2.max) {
+    return range2.current++;
+  }
+  
+  // Both exhausted - must request new ranges
+  throw new Error('No expedition numbers available. Request new ranges.');
+}
+```
+
+### 5. Persist Range State
+
+Store range information persistently:
+
+```javascript
+// Save after each fine creation
+localStorage.setItem('expeditionRanges', JSON.stringify(rangeState));
+
+// Restore on startup
+const rangeState = JSON.parse(localStorage.getItem('expeditionRanges'));
+```
+
+## Multi-Device Considerations
+
+When multiple devices work for the same municipality:
+
+### Each Device Has Its Own Ranges
+
+```
+Device A (IMEI: 111):
+  Range 1: 1000-1099
+  Range 2: 1100-1199
+
+Device B (IMEI: 222):
+  Range 1: 2000-2099
+  Range 2: 2100-2199
+```
+
+**Benefits:**
+- No coordination needed between devices
+- Complete independence and offline capability
+- No risk of number conflicts
+
+### Centralized Applications
+
+For web applications managing multiple municipalities:
+
+```javascript
+const ranges = {
+  'MULTA-088': { // Santa Coloma
+    range1: { min: 5000, max: 5099 },
+    range2: { min: 5100, max: 5199 }
+  },
+  'MULTA-100': { // Hospitalet
+    range1: { min: 3000, max: 3099 },
+    range2: { min: 3100, max: 3199 }
+  }
+};
+
+// Get range for specific municipality
+const municipalityRanges = ranges[imeiForMunicipality];
+```
+
+## Testing Expedition Numbers
+
+During testing phases:
+
+### Pre-production
+- Expedition numbers work identically to production
+- Numbers are isolated to the test environment
+- Safe to experiment without affecting real data
+
+### Production Testing
+- Use agent codes starting with "USU" (e.g., "USU1")
+- Expedition numbers come from real ranges
+- These fines are marked as tests and excluded from the system
+
+```xml
+<!-- Test fine in production -->
+<MultaType>
+  <Cdagen>USU1</Cdagen>  <!-- Test agent -->
+  <Cdexpa>1590621</Cdexpa>  <!-- Real range number -->
+  <Cdclie>088</Cdclie>
+  ...
+</MultaType>
+```
+
+## Troubleshooting
+
+### Problem: "Expedition number already exists"
+
+**Cause:** Duplicate number submission
+
+**Solution:**
+- Check local state to ensure numbers aren't reused
+- Verify your increment logic
+- Request new ranges if you've lost track of usage
+
+### Problem: "Expedition number out of range"
+
+**Cause:** Using a number outside allocated ranges
+
+**Solution:**
+- Verify the number is between min and max of your ranges
+- Request new ranges if exhausted
+- Check that you're using the correct municipality code
+
+### Problem: Ranges exhausted unexpectedly
+
+**Cause:** Higher volume than anticipated
+
+**Solution:**
+- Request ranges more frequently
+- Monitor usage patterns
+- Consider requesting larger ranges from ORGT

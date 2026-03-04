@@ -1,0 +1,119 @@
+---
+title: Adhesion Process
+description: Complete procedure to register your municipality or application for the Alta Multes API webservice
+---
+
+## Overview
+
+Before you can use the Alta Multes API, you must complete the adhesion (registration) process with ORGT (Organisme de Gestió Tributària). This process involves submitting official documentation and providing technical details about your integration.
+
+## Adhesion Procedure
+
+<Steps>
+  <Step title="Download the adhesion form">
+    Download the official [adhesion form](https://github.com/organisme-de-gestio-tributaria/alta-multes/blob/main/Formulari%20d'adhesi%C3%B3.pdf) from the ORGT repository.
+    
+    <Note>
+      If the form does not display in your browser, download it to your device.
+    </Note>
+  </Step>
+
+  <Step title="Complete the form">
+    Fill out all required fields in the adhesion form. As part of this process, you must provide:
+    
+    - **Public certificate**: The public part of the certificate you will use to access the webservice
+    - **Device information**: Details about the devices (PDAs, mobile phones, or centralized applications) that will use the service
+    
+    <Note>
+      The same certificate will be used for both pre-production (testing) and production environments.
+    </Note>
+  </Step>
+
+  <Step title="Obtain official signature">
+    The adhesion form must be signed by the Mayor (Alcalde/ssa) of the municipality.
+  </Step>
+
+  <Step title="Submit via EACAT">
+    Send the signed form to ORGT via EACAT (Espai de Comunicació Ajuntaments-Catalunya).
+  </Step>
+
+  <Step title="Communicate devices to ORGT">
+    After submitting the form, you need to communicate the devices that will use the webservice so ORGT can:
+    
+    - Assign an IMEI to each device
+    - Register them in the ORGT database
+    
+    <Warning>
+      You must communicate with ORGT each time you add a new device to your integration.
+    </Warning>
+  </Step>
+</Steps>
+
+## Device Identification (IMEI)
+
+Each device or application that connects to the Alta Multes API is identified by an IMEI code. The system supports different types of integrations:
+
+### PDA Devices
+
+The webservice was originally designed for PDA devices. Each device is identified by its actual IMEI, which is associated with a specific municipality. PDAs can request ranges of case numbers to work offline until the range is exhausted.
+
+### Mobile Phone Applications
+
+For mobile phone applications:
+
+- Each phone works with a specific municipality
+- ORGT assigns a virtual IMEI code (unique identifier) for each phone
+- The IMEI must be unique across all devices
+
+<Note>
+  If a mobile phone needs to work with multiple municipalities, ORGT must assign a different IMEI for each municipality.
+</Note>
+
+### Centralized Web Applications
+
+For centralized web applications, the IMEI assignment follows this pattern:
+
+- **Single municipality**: The application uses one IMEI assigned by ORGT
+- **Multiple municipalities**: Each municipality requires a different IMEI
+
+The IMEI follows the nomenclature: `nom_empresa-codi_ajuntament`
+
+Where:
+- `nom_empresa` = the company providing the centralized service
+- `codi_ajuntament` = the ORGT code for the municipality
+
+<Example>
+  If the company "Multa S.A." manages the municipality of Abrera, the IMEI would be: **MULTA-001**
+</Example>
+
+## Certificate Requirements
+
+<Warning>
+  Before testing, you must communicate the certificate to ORGT, as the public key needs to be installed on ORGT servers.
+</Warning>
+
+The certificate is required for:
+- Calling the webservice
+- Accessing the specification (WSDL, REST documentation, and schema)
+- Both pre-production and production environments
+
+## Agent Communication
+
+You no longer need to communicate new agents to ORGT, provided that when creating a fine you specify the `quiden` field, indicating whether the person issuing the fine is:
+
+- **"A"** - Agent
+- **"V"** - Security guard (Vigilant)
+- **"P"** - Private citizen (Particular)
+- **"X"** - Other type of person
+
+## Next Steps
+
+After completing the adhesion process:
+
+1. Test in the pre-production environment
+2. Perform connectivity tests in production (using agent codes starting with "USU")
+3. Go live with actual fine submissions
+
+<Note>
+  See the [Requirements](/requirements) page for technical prerequisites before you begin testing.
+</Note>

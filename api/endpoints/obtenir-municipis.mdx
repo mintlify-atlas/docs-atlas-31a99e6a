@@ -1,0 +1,235 @@
+---
+title: 'ObtenirMunicipis'
+description: 'Get the complete list of municipalities'
+api: 'GET /ObtenirMunicipis'
+---
+
+## Overview
+
+The `ObtenirMunicipis` endpoint retrieves the complete list of municipalities with their ORGT codes and corresponding INE (National Statistics Institute) codes. This endpoint does not require authentication and returns all municipalities in a single response.
+
+## Authentication
+
+No authentication required. This is a public endpoint.
+
+## Query Parameters
+
+This endpoint does not require any query parameters.
+
+## Response Schema
+
+<ResponseField name="ArrayOfActualitzacioMunicipi" type="array">
+  Root element containing the complete list of municipalities
+
+  <ResponseField name="ActualitzacioMunicipi" type="object">
+    Municipality information
+    
+    <ResponseField name="Cdclie" type="string" required>
+      Municipality code according to ORGT codification (3 digits in string format)
+      
+      **Example:** `093`, `094`, `100`
+    </ResponseField>
+    
+    <ResponseField name="TipusActualitzacio" type="string">
+      Update type. For this endpoint, always returns `Alta` (active/new)
+      
+      Possible values:
+      - `Alta` (0): Active record
+      - `Baixa` (1): Deleted record  
+      - `Modificacio` (2): Modified record
+    </ResponseField>
+    
+    <ResponseField name="cine10" type="string" required>
+      INE code (Instituto Nacional de Estadística) - 10 digits
+      
+      **Example:** `0809450006`, `0809580001`
+    </ResponseField>
+    
+    <ResponseField name="dsnomc" type="string" required>
+      Short municipality name
+      
+      **Example:** `LA GRANADA`, `GRANERA`
+    </ResponseField>
+    
+    <ResponseField name="dsnom1" type="string">
+      Municipality name part 1 - typically includes "AJUNTAMENT DE" or similar prefix
+      
+      **Example:** `AJUNTAMENT DE`, `AJUNTAMENT`
+    </ResponseField>
+    
+    <ResponseField name="dsnom2" type="string">
+      Municipality name part 2 - typically the actual municipality name
+      
+      **Example:** ` LA GRANADA`, ` DE GRANERA`
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## XML Response Example
+
+```xml
+<ArrayOfActualitzacioMunicipi xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<ActualitzacioMunicipi>
+		<Cdclie>093</Cdclie>
+		<TipusActualitzacio>Alta</TipusActualitzacio>
+		<cine10>0809450006</cine10>
+		<dsnom1>AJUNTAMENT DE</dsnom1>
+		<dsnom2> LA GRANADA</dsnom2>
+		<dsnomc>LA GRANADA</dsnomc>
+	</ActualitzacioMunicipi>
+	<ActualitzacioMunicipi>
+		<Cdclie>094</Cdclie>
+		<TipusActualitzacio>Alta</TipusActualitzacio>
+		<cine10>0809580001</cine10>
+		<dsnom1>AJUNTAMENT</dsnom1>
+		<dsnom2> DE GRANERA</dsnom2>
+		<dsnomc>GRANERA</dsnomc>
+	</ActualitzacioMunicipi>
+</ArrayOfActualitzacioMunicipi>
+```
+
+## Municipality Code Format
+
+The `Cdclie` field uses ORGT's internal municipality codification:
+
+- **Format:** 3-digit string
+- **Leading zeros:** Required (e.g., `088`, not `88`)
+- **Usage:** This code is used throughout the API to identify municipalities in other endpoints
+
+### Common Municipality Codes
+
+| Code | Municipality | INE Code |
+|------|-------------|----------|
+| `088` | Santa Coloma de Gramenet | 0819860008 |
+| `093` | La Granada | 0809450006 |
+| `094` | Granera | 0809580001 |
+| `100` | L'Hospitalet de Llobregat | 0810190003 |
+
+## Usage Patterns
+
+### Building a Municipality Lookup
+
+Create a lookup table for municipality codes:
+
+```javascript
+const buildMunicipalityLookup = async () => {
+  const response = await fetch('/ObtenirMunicipis');
+  const xmlText = await response.text();
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+  
+  const municipis = {};
+  const items = xmlDoc.getElementsByTagName('ActualitzacioMunicipi');
+  
+  for (let item of items) {
+    const cdclie = item.getElementsByTagName('Cdclie')[0].textContent;
+    const dsnomc = item.getElementsByTagName('dsnomc')[0].textContent;
+    const cine10 = item.getElementsByTagName('cine10')[0].textContent;
+    
+    municipis[cdclie] = {
+      name: dsnomc,
+      ineCode: cine10,
+      fullName: item.getElementsByTagName('dsnom1')[0].textContent + 
+                item.getElementsByTagName('dsnom2')[0].textContent
+    };
+  }
+  
+  return municipis;
+};
+```
+
+### Validating Municipality Codes
+
+Use this endpoint to validate municipality codes before submitting fines:
+
+```javascript
+const validateMunicipalityCode = async (cdclie) => {
+  const municipis = await buildMunicipalityLookup();
+  
+  if (!municipis[cdclie]) {
+    throw new Error(`Invalid municipality code: ${cdclie}`);
+  }
+  
+  return municipis[cdclie];
+};
+```
+
+### Populating Dropdown Selectors
+
+Create user interface elements with municipality options:
+
+```javascript
+const populateMunicipalitySelector = async (selectElement) => {
+  const municipis = await buildMunicipalityLookup();
+  
+  Object.entries(municipis).forEach(([code, data]) => {
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = `${data.name} (${code})`;
+    selectElement.appendChild(option);
+  });
+};
+```
+
+### Converting Between ORGT and INE Codes
+
+```javascript
+const convertORGTtoINE = async (orgtCode) => {
+  const municipis = await buildMunicipalityLookup();
+  return municipis[orgtCode]?.ineCode || null;
+};
+
+const convertINEtoORGT = async (ineCode) => {
+  const municipis = await buildMunicipalityLookup();
+  
+  for (let [code, data] of Object.entries(municipis)) {
+    if (data.ineCode === ineCode) {
+      return code;
+    }
+  }
+  
+  return null;
+};
+```
+
+## Caching Recommendations
+
+Since municipality data changes infrequently:
+
+1. **Cache the response** locally after first retrieval
+2. **Refresh daily** or when specifically notified of changes
+3. **Store in application state** to avoid repeated API calls
+4. **Use local storage** in web applications for persistence
+
+```javascript
+const CACHE_KEY = 'municipis_cache';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+const getCachedMunicipis = async () => {
+  const cached = localStorage.getItem(CACHE_KEY);
+  
+  if (cached) {
+    const { data, timestamp } = JSON.parse(cached);
+    
+    if (Date.now() - timestamp < CACHE_DURATION) {
+      return data;
+    }
+  }
+  
+  // Fetch fresh data
+  const municipis = await buildMunicipalityLookup();
+  
+  localStorage.setItem(CACHE_KEY, JSON.stringify({
+    data: municipis,
+    timestamp: Date.now()
+  }));
+  
+  return municipis;
+};
+```
+
+## Related Endpoints
+
+- [ObtenirActualitzacions](/api/endpoints/obtenir-actualitzacions) - Get master data updates including municipality changes
+- [FerLogin](/api/endpoints/fer-login) - Login endpoint that requires valid municipality codes
+- [AltaMulta](/api/endpoints/alta-multa) - Submit fine that requires municipality code (Cdclie)

@@ -1,0 +1,149 @@
+---
+title: "POST /AltaInci"
+description: "Register a new public road incident"
+---
+
+## Overview
+
+This endpoint allows you to register a new incident on public roads. The incident is recorded in the database with details about the type, location, anomaly, and optionally a photo.
+
+## Authentication
+
+This endpoint requires authentication through a device IMEI identifier that must be associated with a municipality in the system.
+
+## HTTP Request
+
+```
+POST /RestMultesPDA/svcMultesPDA.svc/rest/AltaInci
+```
+
+## Request Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Content-Type | application/xml | Yes |
+
+## Request Body
+
+The request body must be an XML document with the incident data conforming to the `InciType` schema.
+
+<ParamField body="Cdclie" type="string" required>
+  Municipality code according to ORGT coding (3 digits in string format). Example: '088'
+</ParamField>
+
+<ParamField body="Nminci" type="string">
+  Incident number
+</ParamField>
+
+<ParamField body="Imei" type="string" required>
+  Device identifier (maximum 15 alphanumeric positions)
+</ParamField>
+
+<ParamField body="Cdagen" type="string" required>
+  Agent code
+</ParamField>
+
+<ParamField body="Nmtipu" type="string" required>
+  Incident type number
+</ParamField>
+
+<ParamField body="Nmambi" type="string" required>
+  Scope/environment number
+</ParamField>
+
+<ParamField body="Nmobje" type="string" required>
+  Object number
+</ParamField>
+
+<ParamField body="Nmanom" type="string" required>
+  Anomaly number
+</ParamField>
+
+<ParamField body="Dsinci" type="string">
+  Incident description
+</ParamField>
+
+<ParamField body="Dslloc" type="string" required>
+  Location description
+</ParamField>
+
+<ParamField body="Dtinci" type="string" required>
+  Incident date and time (format: yyyy/MM/dd HH:mm:ss)
+</ParamField>
+
+<ParamField body="NminciPDA" type="string">
+  PDA incident number
+</ParamField>
+
+<ParamField body="Snfoto" type="string">
+  Photo indicator ('S' for yes, 'N' for no)
+</ParamField>
+
+<ParamField body="Foto" type="array">
+  Photo data encoded in Base64 format
+</ParamField>
+
+## Response
+
+<ResponseField name="tRetorn" type="object">
+  Return object with the operation result
+
+  <ResponseField name="CodiRetorn" type="integer">
+    Return code:
+    - `0`: Success - incident recorded successfully
+    - `-1`: Database error - incident could not be saved
+    - Negative number (not -9000): Database error
+    - `-9000`: Other error
+  </ResponseField>
+
+  <ResponseField name="DescRetorn" type="string">
+    Return description (error message if applicable)
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```xml
+<InciType xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+	<Cdagen>220</Cdagen>
+	<Cdclie>088</Cdclie>
+	<Dsinci>prova</Dsinci>
+	<Dslloc>via pública</Dslloc>
+	<Dtinci>2025/03/07 13:13:13</Dtinci>
+	<Foto>/9j/YZVDELmjozSniHHQ//2Q2A==</Foto>
+	<Imei>353947020131525</Imei>
+	<Nmambi>2</Nmambi>
+	<Nmanom>4</Nmanom>
+	<NminciPDA>4</NminciPDA>
+	<Nmobje>3</Nmobje>
+	<Nmtipu>1</Nmtipu>
+	<Snfoto>S</Snfoto>
+</InciType>
+```
+
+## Example Response
+
+### Success Response (200 OK)
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<CodiRetorn>0</CodiRetorn>
+	<DescRetorn/>
+</tRetorn>
+```
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success - incident recorded successfully |
+| -1 | Could not save the incident to the database |
+| -9000 | Error different from database errors |
+| Other negative | Database error |
+
+## Notes
+
+- All XML fields should be ordered alphabetically within the `InciType` element
+- The `Foto` field should contain Base64-encoded image data
+- The device IMEI must be previously registered and associated with a municipality
+- The incident types, scopes, objects, and anomalies should be obtained from the master data using the `ObtenirActualitzacions` endpoint

@@ -1,0 +1,191 @@
+---
+title: 'API Overview'
+description: 'Alta Multes REST API architecture and design principles'
+---
+
+## Introduction
+
+The Alta Multes API is a REST web service that enables municipalities to register traffic infractions and obtain supporting master files. Originally designed for PDA devices, the API now supports mobile applications and centralized web applications.
+
+## API Architecture
+
+The API follows REST principles with XML-based communication for both requests and responses.
+
+### Key Architectural Features
+
+- **RESTful Design**: Standard HTTP methods (GET, POST) for different operations
+- **XML Format**: All POST requests and responses use XML format
+- **Certificate Authentication**: HTTPS with mutual TLS certificate authentication
+- **Device-Based Identification**: Each device is identified by an IMEI or assigned unique identifier
+- **Offline Capability**: Range-based expedition numbers allow offline operation
+
+## Device Identification
+
+Each device accessing the API must be identified by an IMEI (or assigned code):
+
+- **PDA Devices**: Use actual IMEI from the device
+- **Mobile Applications**: ORGT assigns a unique code per device and municipality
+- **Centralized Web Apps**: Use pattern `company_name-municipality_code` (e.g., "MULTA-001")
+
+<Note>
+Each device IMEI is associated with a single municipality. To work with multiple municipalities, use different IMEIs for each.
+</Note>
+
+## XML Format Requirements
+
+### All Communications Use XML
+
+Both POST request bodies and all API responses are in XML format.
+
+<Warning>
+**Critical Requirement for AltaMulta Endpoint**
+
+When submitting infractions via the `AltaMulta` endpoint, **XML fields must be ordered alphabetically**.
+
+- First field must be: `cdagen`
+- Last field must be: `viapen`
+
+Failure to order fields alphabetically will result in request rejection.
+</Warning>
+
+### Example: Alphabetically Ordered XML
+
+```xml
+<MultaType xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Cdagen>220</Cdagen>
+  <Cdasig>S</Cdasig>
+  <Cdclie>088</Cdclie>
+  <Cdcond>C</Cdcond>
+  <Cdexpa>P090018145</Cdexpa>
+  <Cdiden />
+  <Cdmatr>1234ABC</Cdmatr>
+  <!-- ... more fields in alphabetical order ... -->
+  <Viapen>N</Viapen>
+</MultaType>
+```
+
+### Additional XML Rules
+
+- All text data must be in **UPPERCASE**
+- Photos are encoded as Base64 byte arrays
+- Empty fields can be self-closing tags or empty elements
+
+## Authentication & Security
+
+### HTTPS with Certificate Authentication
+
+All API access requires:
+
+1. **Client Certificate**: Provided by your organization
+2. **Server Certificate**: Validates ORGT servers
+3. **Mutual TLS**: Both client and server authenticate each other
+
+<Warning>
+Before using the API, you must provide your public certificate to ORGT. The same certificate is used for both pre-production and production environments.
+</Warning>
+
+### Registration Process
+
+Before API access:
+
+1. Complete the adhesion form (signed by the Mayor)
+2. Submit via EACAT to ORGT
+3. Provide your public certificate
+4. Register all device IMEIs with ORGT
+5. Receive credentials for pre-production testing
+
+## Response Format
+
+All endpoints return XML responses with a standard structure:
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <CodiRetorn>0</CodiRetorn>
+  <DescRetorn/>
+</tRetorn>
+```
+
+### Return Codes
+
+- `0`: Success
+- `1`: Warning (operation completed with conditions)
+- `-1`: Application error (specific to each endpoint)
+- Negative codes (except -9000): Database errors
+- `-9000`: Uncontrolled exception or other error
+
+<Info>
+See the [Error Codes](/api/error-codes) page for detailed error code meanings by endpoint.
+</Info>
+
+## Testing Requirements
+
+### Pre-Production Testing
+
+Before production use:
+
+1. Test all operations in pre-production environment
+2. Verify certificate authentication works
+3. Validate data format and field ordering
+4. Test offline range functionality
+
+### Production Testing
+
+For connectivity testing in production:
+
+- Use agent codes starting with "USU" (e.g., "USU1")
+- These test infractions are not entered into the ORGT system
+- Allows verification of production connectivity without affecting real data
+
+<Warning>
+Never skip pre-production testing. Production access is only granted after successful pre-production validation.
+</Warning>
+
+## Available Operations
+
+The API provides the following main operations:
+
+| Operation | Purpose | Method |
+|-----------|---------|--------|
+| **AltaMulta** | Register a new traffic infraction | POST |
+| **AltaAnulada** | Cancel a previously registered infraction | GET |
+| **Consulta** | Query an infraction by municipality and expedition number | GET |
+| **ObtenirActualitzacions** | Get updates to master files (conducts, articles, etc.) | GET |
+| **ObtenirRang** | Request range of expedition numbers for offline work | GET |
+| **ObtenirMunicipis** | Get complete list of municipalities with codes | GET |
+| **FerLogin** | Authenticate agent and device | GET |
+| **ObtenirEscuts** | Download municipality emblems/logos | GET |
+
+<Note>
+Several deprecated endpoints exist (BuscarActualitzacions, DemanarRang, ValidarLogin, etc.). Use the recommended modern equivalents listed above.
+</Note>
+
+## Master Files
+
+The API provides access to master reference data:
+
+- **Conducts** (Conductes): Infraction types with codes
+- **Articles**: Legal references
+- **Municipalities**: ORGT and INE codes
+- **Streets**: Road/street catalog
+- **Vehicle Models**: Makes and models
+- **Colors**: Standard color codes
+- **Documents**: Associated PDF documents
+
+Use `ObtenirActualitzacions` to sync these files periodically.
+
+## Offline Operation
+
+The API supports offline work through expedition number ranges:
+
+1. Request a range using `ObtenirRang`
+2. Device receives min/max expedition numbers
+3. Create infractions offline using numbers from the range
+4. Submit when connectivity is restored
+5. Request new range when current range is exhausted
+
+## Next Steps
+
+- [Environment URLs](/api/environments) - Production and pre-production endpoints
+- [Error Codes](/api/error-codes) - Detailed error code reference
+- [AltaMulta](/api/endpoints/alta-multa) - Register traffic violations
+- [ObtenirRang](/api/endpoints/obtenir-rang) - Request expedition number ranges

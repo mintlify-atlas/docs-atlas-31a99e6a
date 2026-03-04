@@ -1,0 +1,338 @@
+---
+title: 'POST /AltaMulta'
+description: 'Create a new traffic violation'
+---
+
+## Overview
+
+The AltaMulta endpoint allows you to register a new traffic violation (multa) in the system. The violation is uniquely identified by the municipality code and the expedition number within that municipality.
+
+## Endpoint
+
+```
+POST /AltaMulta
+```
+
+## Authentication
+
+This endpoint requires authentication. You must obtain expedition number ranges using the `ObtenirRang()` function before creating violations. The expedition number must be within the requested range.
+
+## Content Type
+
+- **Consumes:** `application/xml`
+- **Produces:** `application/xml`
+
+## Request Body
+
+The request body must contain violation data in XML format as a `MultaType` object.
+
+<Warning>
+**Critical:** Fields in the MultaType XML must be ordered **alphabetically**. Non-alphabetical ordering will cause the request to fail.
+</Warning>
+
+### Request Schema
+
+<ParamField body="pMulta" type="MultaType" required>
+  Violation data in XML format with alphabetically ordered fields
+
+  <Expandable title="MultaType Fields">
+    <ParamField body="Cdagen" type="string">
+      Agent code
+    </ParamField>
+    
+    <ParamField body="Cdasig" type="string">
+      Assignment code
+    </ParamField>
+    
+    <ParamField body="Cdclie" type="string" required>
+      Municipality code (3 digits). Example: '088'. Use ObtenirMunicipis() to see all values
+    </ParamField>
+    
+    <ParamField body="Cdcond" type="string">
+      Conduct code
+    </ParamField>
+    
+    <ParamField body="Cdexpa" type="string" required>
+      Expedition number. Must be within the range obtained from ObtenirRang()
+    </ParamField>
+    
+    <ParamField body="Cdiden" type="string">
+      Identification code
+    </ParamField>
+    
+    <ParamField body="Cdmatr" type="string">
+      License plate number
+    </ParamField>
+    
+    <ParamField body="Cdmunc" type="string">
+      Municipality code where violation occurred
+    </ParamField>
+    
+    <ParamField body="Cdposc" type="string">
+      Postal code
+    </ParamField>
+    
+    <ParamField body="Cdrefe" type="string">
+      Reference code
+    </ParamField>
+    
+    <ParamField body="Codvia" type="string">
+      Street type code (CR=Carrer, AV=Avinguda, etc.)
+    </ParamField>
+    
+    <ParamField body="Color" type="string">
+      Vehicle color
+    </ParamField>
+    
+    <ParamField body="Desamp1" type="string">
+      Additional description field 1
+    </ParamField>
+    
+    <ParamField body="Desamp2" type="string">
+      Additional description field 2
+    </ParamField>
+    
+    <ParamField body="Desamp3" type="string">
+      Additional description field 3
+    </ParamField>
+    
+    <ParamField body="Desamp4" type="string">
+      Additional description field 4
+    </ParamField>
+    
+    <ParamField body="Desamp5" type="string">
+      Additional description field 5
+    </ParamField>
+    
+    <ParamField body="Dsadrc" type="string">
+      Street address
+    </ParamField>
+    
+    <ParamField body="Dslloc" type="string">
+      Location description
+    </ParamField>
+    
+    <ParamField body="Dsmunc" type="string">
+      Municipality name
+    </ParamField>
+    
+    <ParamField body="Dspais" type="string">
+      Country
+    </ParamField>
+    
+    <ParamField body="Dsprov" type="string">
+      Province
+    </ParamField>
+    
+    <ParamField body="Dtcoca" type="string">
+      Notification date
+    </ParamField>
+    
+    <ParamField body="Dtinfr" type="string">
+      Violation date (format: yyyyMMdd)
+    </ParamField>
+    
+    <ParamField body="Dtmenor" type="string">
+      Minor date (format: yyyyMMdd)
+    </ParamField>
+    
+    <ParamField body="Foto" type="byte[]">
+      Photo in Base64 encoded format
+    </ParamField>
+    
+    <ParamField body="Hmmult" type="string">
+      Violation time (HHmm format)
+    </ParamField>
+    
+    <ParamField body="Identi" type="string">
+      Identity document (DNI/NIE)
+    </ParamField>
+    
+    <ParamField body="Idepda" type="string">
+      PDA device identifier (IMEI)
+    </ParamField>
+    
+    <ParamField body="Immult" type="string">
+      Violation amount
+    </ParamField>
+    
+    <ParamField body="Imppag" type="string">
+      Payment amount (reduced amount if paid early)
+    </ParamField>
+    
+    <ParamField body="Marca" type="string">
+      Vehicle brand
+    </ParamField>
+    
+    <ParamField body="Model" type="string">
+      Vehicle model
+    </ParamField>
+    
+    <ParamField body="Nmmobi" type="string">
+      Mobile number
+    </ParamField>
+    
+    <ParamField body="Nom" type="string">
+      Name
+    </ParamField>
+    
+    <ParamField body="Numvia" type="string">
+      Street number
+    </ParamField>
+    
+    <ParamField body="Orivia" type="string">
+      Street orientation
+    </ParamField>
+    
+    <ParamField body="Quiden" type="string">
+      Identification type
+    </ParamField>
+    
+    <ParamField body="Resident" type="string">
+      Resident flag (S/N)
+    </ParamField>
+    
+    <ParamField body="Retcar" type="string">
+      Card withdrawal flag (S/N)
+    </ParamField>
+    
+    <ParamField body="Snfoto" type="string">
+      Photo flag (S/N)
+    </ParamField>
+    
+    <ParamField body="Snmeno" type="string">
+      Minor flag (S/N)
+    </ParamField>
+    
+    <ParamField body="Snsign" type="string">
+      Signature flag (S/N)
+    </ParamField>
+    
+    <ParamField body="Sqcond" type="string">
+      Conduct sequence number
+    </ParamField>
+    
+    <ParamField body="Tpmatr" type="string">
+      License plate type
+    </ParamField>
+    
+    <ParamField body="Tpvehi" type="string">
+      Vehicle type
+    </ParamField>
+    
+    <ParamField body="Viapen" type="string">
+      Penalty route flag (S/N)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+### Success Response (200)
+
+Returns a `tRetorn` object with the operation result.
+
+<ResponseField name="CodiRetorn" type="integer" required>
+  Return code indicating the result:
+  - `0`: Success - violation created successfully
+  - `-1`: Failed to add violation to database
+  - Negative value (not -9000): Database error
+  - `-9000`: Other error (non-database)
+</ResponseField>
+
+<ResponseField name="DescRetorn" type="string">
+  Error description (empty on success)
+</ResponseField>
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success |
+| -1 | Failed to add violation to database |
+| -9000 | Unhandled exception |
+| Other negative | Database error |
+
+## Examples
+
+### Request Example
+
+```xml
+<MultaType xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA">
+  <Cdagen>220</Cdagen>
+  <Cdasig>S</Cdasig>
+  <Cdclie>088</Cdclie>
+  <Cdcond>C</Cdcond>
+  <Cdexpa>P090018145</Cdexpa>
+  <Cdiden/>
+  <Cdmatr>1234ABC</Cdmatr>
+  <Cdmunc>245</Cdmunc>
+  <Cdposc>08923</Cdposc>
+  <Cdrefe/>
+  <Codvia>CR</Codvia>
+  <Color>GRIS</Color>
+  <Desamp1/>
+  <Desamp2/>
+  <Desamp3/>
+  <Desamp4/>
+  <Desamp5/>
+  <Dsadrc>CARRER ARAGO 38</Dsadrc>
+  <Dslloc>VIA PÚBLICA</Dslloc>
+  <Dsmunc>SANTA COLOMA</Dsmunc>
+  <Dspais>ESPAÑA</Dspais>
+  <Dsprov>BARCELONA</Dsprov>
+  <Dtcoca/>
+  <Dtinfr>20250406</Dtinfr>
+  <Dtmenor>20020101</Dtmenor>
+  <Foto>/9j/YZVDELmjozSniHHQ//2Q2A==</Foto>
+  <Hmmult>1234</Hmmult>
+  <Identi>00000000T</Identi>
+  <Idepda>353947020131525</Idepda>
+  <Immult>600</Immult>
+  <Imppag>300</Imppag>
+  <Marca>SEAT</Marca>
+  <Model>MALAGA</Model>
+  <Nmmobi>123456</Nmmobi>
+  <Nom/>
+  <Numvia>12</Numvia>
+  <Orivia>O</Orivia>
+  <Quiden>A</Quiden>
+  <Resident>S</Resident>
+  <Retcar>S</Retcar>
+  <Snfoto>S</Snfoto>
+  <Snmeno>S</Snmeno>
+  <Snsign>S</Snsign>
+  <Sqcond>8430</Sqcond>
+  <Tpmatr>2</Tpmatr>
+  <Tpvehi>1</Tpvehi>
+  <Viapen>N</Viapen>
+</MultaType>
+```
+
+### Success Response Example
+
+```xml
+<tRetorn xmlns="http://schemas.datacontract.org/2004/07/WcfMultesPDA" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <CodiRetorn>0</CodiRetorn>
+  <DescRetorn/>
+</tRetorn>
+```
+
+## Important Notes
+
+<Note>
+- Field ordering must be **strictly alphabetical** in the XML request
+- The expedition number (Cdexpa) must be within the range obtained from `ObtenirRang()`
+- The municipality code (Cdclie) must be valid (use `ObtenirMunicipis()` to get valid codes)
+- Photos must be Base64 encoded
+- Date fields use yyyyMMdd format
+- Time fields use HHmm format (24-hour)
+- Boolean-like fields use 'S' for Yes (Sí) and 'N' for No
+</Note>
+
+## Related Endpoints
+
+- [GET /Consulta](/api/endpoints/consulta) - Query an existing violation
+- [GET /AltaAnulada](/api/endpoints/alta-anulada) - Cancel a violation
+- GET /ObtenirRang - Obtain expedition number ranges
+- GET /ObtenirMunicipis - Get list of valid municipality codes
