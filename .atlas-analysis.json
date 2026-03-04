@@ -1,0 +1,106 @@
+{
+  "projectType": "api-service",
+  "projectName": "Alta Multes API",
+  "projectDescription": "REST API webservice for municipalities to register traffic violations",
+  "theme": "aspen",
+  "primaryColor": "#0066CC",
+  "lightColor": "#4D94FF",
+  "darkColor": "#004C99",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "adhesion-process",
+              "requirements"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/authentication",
+              "guides/device-setup",
+              "guides/working-offline",
+              "guides/testing"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/device-identification",
+              "concepts/expedition-numbers",
+              "concepts/master-data"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/environments",
+              "api/error-codes"
+            ]
+          },
+          {
+            "group": "Traffic Violations",
+            "pages": [
+              "api/endpoints/alta-multa",
+              "api/endpoints/consulta",
+              "api/endpoints/alta-anulada"
+            ]
+          },
+          {
+            "group": "Device Management",
+            "pages": [
+              "api/endpoints/fer-login",
+              "api/endpoints/obtenir-rang",
+              "api/endpoints/canvi-password"
+            ]
+          },
+          {
+            "group": "Master Data",
+            "pages": [
+              "api/endpoints/obtenir-actualitzacions",
+              "api/endpoints/obtenir-municipis",
+              "api/endpoints/obtenir-escuts"
+            ]
+          },
+          {
+            "group": "Incidents",
+            "pages": [
+              "api/endpoints/alta-inci"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Register traffic violations with municipality and device identification",
+    "Offline operation support with expedition number ranges",
+    "Master data synchronization for municipalities, violations, and vehicle data",
+    "Certificate-based HTTPS authentication",
+    "Query and cancel violations",
+    "Device and agent authentication management"
+  ],
+  "publicApiSurface": [
+    "POST /AltaMulta - Register a traffic violation",
+    "GET /Consulta - Query a violation by municipality and expedition number",
+    "GET /AltaAnulada - Cancel a previously registered violation",
+    "GET /FerLogin - Authenticate agent and device",
+    "GET /ObtenirRang - Request expedition number ranges for offline work",
+    "GET /ObtenirActualitzacions - Fetch master data updates",
+    "GET /ObtenirMunicipis - Get list of municipalities with ORGT and INE codes",
+    "GET /ObtenirEscuts - Download municipality coat of arms images",
+    "GET /CanviPassword - Change agent password",
+    "POST /AltaInci - Register a public road incident"
+  ]
+}
